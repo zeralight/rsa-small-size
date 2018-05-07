@@ -5,16 +5,40 @@
 
 */
 
+#ifdef BIGNUM_MAIN
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <assert.h>
 #include "bn.h"
 
 
+static void test_bignum_bytes()
+{
+  unsigned char bytes[] = "hello";
+  struct bn n;
+  bignum_init(&n);
+  bignum_from_bytes(&n, bytes, sizeof bytes - 1);
+  
+  /*
+  printf("Bignumber content: ");
+  for (uint32_t i = 0; i < BN_ARRAY_SIZE; ++i)
+    printf("%d ", n.array[i]);
+  printf("\n");
+  */
+
+  unsigned char output[sizeof bytes - 1];
+  bignum_to_bytes(&n, output, sizeof output);
+  printf("bytes content: %.5s\n", output);
+
+  assert (memcmp(bytes, output, sizeof bytes - 1) == 0);
+}
 
 int main()
 {
+  test_bignum_bytes();
+
   char sabuf[8192];
   char sbbuf[8192];
   char scbuf[8192];
@@ -149,4 +173,4 @@ int main()
 
   return 0;
 }
-
+#endif

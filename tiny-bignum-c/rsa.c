@@ -8,17 +8,6 @@
 /* O(log n) */
 static void pow_mod(struct bn* a, struct bn* b, struct bn* n, struct bn* res)
 {
-  /*
-  printf("pow_mod: \n");
-  printf("a = ");
-  for (uint32_t i = 0; i < BN_ARRAY_SIZE; ++i) printf("%d ", a->array[i]);
-  printf("\nb = ");
-  for (uint32_t i = 0; i < BN_ARRAY_SIZE; ++i) printf("%d ", b->array[i]);
-  printf("\nn = ");
-  for (uint32_t i = 0; i < BN_ARRAY_SIZE; ++i) printf("%d ", n->array[i]);
-  printf("\n.\n"); fflush(stdout);
-  */
-  
   bignum_from_int(res, 1); /* r = 1 */
 
   struct bn tmpa;
@@ -27,32 +16,54 @@ static void pow_mod(struct bn* a, struct bn* b, struct bn* n, struct bn* res)
   bignum_assign(&tmpa, a);
   bignum_assign(&tmpb, b);
 
-  int it = 0;
   while (1)
   {
-    printf("done %d iterations\n", it); fflush(stdout);
-    ++it;
+    // printf("Iteration:\n");
     if (tmpb.array[0] & 1)     /* if (b % 2) */
     {
-      //printf("36\n"); fflush(stdout);
       bignum_mul(res, &tmpa, &tmp);  /*   r = r * a % m */
-      //printf("38\n"); fflush(stdout);
       bignum_mod(&tmp, n, res);
     }
-    printf("41\n"); fflush(stdout);
     bignum_rshift(&tmpb, &tmp, 1); /* b /= 2 */
-    printf("43\n"); fflush(stdout);
     bignum_assign(&tmpb, &tmp);
     
-    printf("46\n"); fflush(stdout);
-    if (bignum_is_zero(&tmpb))
+    if (bignum_is_zero(&tmpb)) {
       break;
-
-    printf("51\n"); fflush(stdout);
+    }
+    
     bignum_mul(&tmpa, &tmpa, &tmp);
-    printf("52\n"); fflush(stdout);
     bignum_mod(&tmp, n, &tmpa);
   }
+  printf("Out of pow_mod\n");
+}
+
+unsigned char* rsa_decrypt(const unsigned char* from,
+                          uint32_t flen,
+                          const unsigned char* _n,
+                          uint32_t nlen,
+                          const unsigned char* _d,
+                          uint32_t dlen)
+{
+  struct bn n;
+  struct bn d;
+  struct bn m;
+  struct bn c;
+
+  bignum_init(&n);
+  bignum_init(&d);
+  bignum_init(&m);
+  bignum_init(&c);
+
+  bignum_from_bytes(&c, from, flen);
+  bignum_from_bytes(&n, _n, nlen);
+  bignum_from_bytes(&d, _d, dlen);
+
+  pow_mod(&c, &d, &n, &m);
+
+  unsigned char* decrypted = malloc(RSA_KEYSIZE);
+  bignum_to_bytes(&m, decrypted, RSA_KEYSIZE);
+
+  return decrypted;
 }
 
 unsigned char* rsa_encrypt(const unsigned char* from, 
@@ -71,58 +82,24 @@ unsigned char* rsa_encrypt(const unsigned char* from,
   bignum_init(&m);
   bignum_init(&c);
 
-  
-  //printf("in rsa function n = ");
-  //for (uint32_t i = 0; i < 2*RSA_KEYSIZE; ++i) printf("%c", _n[i]); printf("\n");
-  //printf("nlen = %d\n", nlen); fflush(stdout);
-  bignum_from_string(&m, from, flen);
-  bignum_from_string(&n, _n, nlen);
-  //printf("array n in rsa_encrypt: ");
-  //for (uint32_t i = 0; i < BN_ARRAY_SIZE; ++i) printf("%d ", n.array[i]); printf("\n"); fflush(stdout);
+
+  bignum_from_bytes(&m, from, flen);
+  bignum_from_bytes(&n, _n, nlen);
   bignum_from_int(&e, _e);
 
    // checking everything good
-   char buffer[8192];
-   bignum_to_string(&n, buffer, 8192);
-   printf("n = %s\n", buffer);
-   bignum_to_string(&e, buffer, 8192);
-   printf("e = %s\n", buffer);
-   bignum_to_string(&m, buffer, 8192);
-   printf("m = %s\n", buffer);
+   printf("checking:\n");
+   unsigned char buffer[8192];
+   bignum_to_bytes(&m, buffer, flen);
+   printf("from: "); print_hex(buffer, flen);
+   bignum_to_bytes(&n, buffer, nlen);
+   printf("n: "); print_hex(buffer, nlen);
 
-  printf("starting cipher now\n"); fflush(stdout);
   pow_mod(&m, &e, &n, &c);
 
-  for (uint32_t i = 0; i < BN_ARRAY_SIZE; ++i)
-    printf("%d ", c.array[i]);
-  printf("\n");
-
-
-  
-  char* hex_output = malloc(1000 + 1);
-  bignum_to_string(&c, hex_output, 1000);
-  //printf("hex output: %s\n", hex_output);
-  //printf("\n");
-  
   unsigned char* cipher = malloc(RSA_KEYSIZE);
-  uint8_t j = 0;
-  for (uint8_t i = 0; hex_output[i] != 0; i += 2, ++j)
-  {
-    uint8_t a = hex_output[i];
-    uint8_t b = hex_output[i+1];
-    a -= (a < '9' ? '0' : 'a');
-    b -= (b < '9' ? '0' : 'a');
-    cipher[j] = (a << 4) + b;
-    //printf("%c %c | ", hex_output[i], hex_output[i+1]);
-  }
-
-  /*
-  printf("byte output: ");
-  for (uint32_t i = 0; i < RSA_KEYSIZE; ++i) printf("%02x", cipher[i]);
-  printf("\n");
-  */
-
-  free(hex_output);
+  bignum_to_bytes(&c, cipher, RSA_KEYSIZE);
+  printf("cipher: "); print_hex(cipher, RSA_KEYSIZE);
 
   return cipher;
 }
@@ -140,7 +117,8 @@ static void test_rsa1024(void)
   struct bn m; /* clear text message */
   struct bn c; /* cipher text */
 
-  int x = 54321;
+  char x[] = "e804b31918162222949cfc1c009a79b86d0444ca6dfb10754c1edc8b7c8edc7c5de9cb34a800418ba4f24dc9f5c3a10de9ff32cf09884820434b005dc71c0ab6771f0c2bfc51f132fd9cd13a4e6dec3a98bc9e2e6da42fd8ee9fe7f0966118cb4b2e12b20692ecf1db42f86e0617a9150970a00a151b8c529ac390d62fa3bfb4ffcd3e835388ea91b6c07554768776a0c201dfeb9c3ebc79e99061a2607abc668d183f76974f5fd8c73b3136d45d7a0a4d9cd7b08cdca1fb55996387455575576d45ecab832514067f7b5f540437b8c71ff4a40ddec785c0a512432dd590ed37e8f436627b3abe010cdc3f06b07961257a684cd1924abcd970d5329af78bd49e"; 
+  // int x = 54321;
 
   bignum_init(&n);
   bignum_init(&d);
@@ -150,16 +128,17 @@ static void test_rsa1024(void)
 
   bignum_from_string(&n, public,  256);
   bignum_from_string(&d, private, 256);
-  bignum_from_int(&e, 65537);
+  bignum_from_int(&e, 0x10001);
   bignum_init(&m);
   bignum_init(&c);
 
-  bignum_from_int(&m, x);
+  //bignum_from_int(&m, x);
+  bignum_from_string(&m, x, 512);
   bignum_to_string(&m, buf, sizeof(buf));
   printf("m = %s \n", buf);
 
-
-  printf("  Encrypting number x = %d \n", x);   fflush(stdout);
+  printf("  Encrypting number x = %s \n", x);   fflush(stdout);
+  //printf("  Encrypting number x = %d \n", x);   fflush(stdout);
   pow_mod(&m, &e, &n, &c);
   printf("  Done...\n\n"); fflush(stdout);
 

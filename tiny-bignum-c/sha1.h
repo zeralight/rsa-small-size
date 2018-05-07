@@ -5,6 +5,7 @@
                   ((((uint32_t)(n) & 0xFF00)) << 8) | \
                   ((((uint32_t)(n) & 0xFF0000)) >> 8) | \
                   ((((uint32_t)(n) & 0xFF000000)) >> 24))
+
                   
 int sha1(const unsigned char* input, uint32_t len, unsigned char* output);
 int sha1_uint8_t(const uint8_t* input, uint32_t len, uint8_t* output);

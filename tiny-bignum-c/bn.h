@@ -1,24 +1,5 @@
 #ifndef __BIGNUM_H__
 #define __BIGNUM_H__
-/*
-
-Big number library - arithmetic on multiple-precision unsigned integers.
-
-This library is an implementation of arithmetic on arbitrarily large integers.
-
-The difference between this and other implementations, is that the data structure
-has optimal memory utilization (i.e. a 1024 bit integer takes up 128 bytes RAM),
-and all memory is allocated statically: no dynamic allocation for better or worse.
-
-Primary goals are correctness, clarity of code and clean, portable implementation.
-Secondary goal is a memory footprint small enough to make it suitable for use in
-embedded applications.
-
-
-The current state is correct functionality and adequate performance.
-There may well be room for performance-optimizations and improvements.
-
-*/
 
 #include <stdint.h>
 #include <assert.h>
@@ -93,6 +74,8 @@ void bignum_from_int(struct bn* n, DTYPE_TMP i);
 int  bignum_to_int(struct bn* n);
 void bignum_from_string(struct bn* n, char* str, int nbytes);
 void bignum_to_string(struct bn* n, char* str, int maxsize);
+void bignum_to_bytes(const struct bn* n, unsigned char* bytes, uint32_t len);
+void bignum_from_bytes(struct bn* n, const unsigned char* bytes, uint32_t len);
 
 /* Basic arithmetic operations: */
 void bignum_add(struct bn* a, struct bn* b, struct bn* c); /* c = a + b */
@@ -117,6 +100,8 @@ void bignum_pow(struct bn* a, struct bn* b, struct bn* c); /* Calculate a^b -- e
 void bignum_assign(struct bn* dst, struct bn* src);        /* Copy src into dst -- dst := src */
 
 
+void i2osp(void* dest, const void* src, uint32_t len);
+void print_hex(const unsigned char* bytes, uint32_t len);
 #endif /* #ifndef __BIGNUM_H__ */
 
 

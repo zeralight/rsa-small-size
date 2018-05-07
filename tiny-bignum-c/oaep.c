@@ -3,7 +3,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "oaep.h"
+
 #include "sha1.h"
+#include "rsa.h"
+#include "bn.h"
 
 static const unsigned char params[] = "SHA-1 MGF1";
 
@@ -43,7 +47,7 @@ uint8_t* pkcs_mgf1(uint8_t* seed, uint32_t seedOffset, uint32_t seedLength, uint
   return mask;
 }
 
-uint8_t* pkcs_oaep_mgf1_encode(uint8_t* message, uint32_t mLen, uint32_t length)
+uint8_t* pkcs_oaep_mgf1_encode(const uint8_t* message, uint32_t mLen, uint32_t length)
 {
   uint32_t hLen = SHA1_HASH_LEN;
   if (mLen > length - (hLen << 1) - 1)
@@ -87,7 +91,7 @@ uint8_t* pkcs_oaep_mgf1_encode(uint8_t* message, uint32_t mLen, uint32_t length)
 }
 
 
-uint8_t* pkcs_oaep_mgf1_decode(uint8_t* message, uint32_t mLen)
+uint8_t* pkcs_oaep_mgf1_decode(const uint8_t* message, uint32_t mLen)
 {
   uint32_t hLen = SHA1_HASH_LEN;
   if (mLen < (hLen << 1) + 1)
@@ -152,6 +156,28 @@ int main() {
   printf("\n");
 
   free(encoded);
+  free(decoded);
+  return 0;
+}
+#endif
+
+#if defined(TEST2)
+int main()
+{
+  FILE* f = fopen("cipher", "rb");
+  unsigned char encoded[256];
+  int r = fread(encoded, 1, 256, f);
+  if (r < 256) {
+    printf("didnt read 256 bytes");
+    return 1;
+  }
+  fclose(f);
+  
+  uint8_t* decoded = pkcs_oaep_mgf1_decode(encoded, RSA_KEYSIZE);
+  printf("decoded: %p", decoded);
+  if (!decoded) return 0;
+  printf("decoded: "); print_hex(decoded, 256);
+
   free(decoded);
   return 0;
 }

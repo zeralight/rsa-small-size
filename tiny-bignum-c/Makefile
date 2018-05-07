@@ -9,9 +9,9 @@ rsa:
 sha1:
 	$(CC) $(CFLAGS) -DSHA1_MAIN sha1.c -o ./build/sha1
 oaep:
-	$(CC) $(CFLAGS) -DTEST -DOAEP_MAIN sha1.c oaep.c -o ./build/oaep
-tests:
-	$(CC) $(CFLAGS) bn.c ./tests/load_cmp.c    -o ./build/test_load_cmp
+	$(CC) $(CFLAGS) -DTEST2 bn.c sha1.c oaep.c -o ./build/oaep
+load_cmp: 
+	$(CC) $(CFLAGS) -DBIGNUM_MAIN bn.c ./tests/load_cmp.c    -o ./build/test_load_cmp
 	$(CC) $(CFLAGS) bn.c ./tests/factorial.c   -o ./build/test_factorial
 
 
