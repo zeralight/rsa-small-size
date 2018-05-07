@@ -25,12 +25,14 @@ There may well be room for performance-optimizations and improvements.
 
 
 /* This macro defines the word size in bytes of the array that constitues the big-number data structure. */
+#define WORD_SIZE 2
+
 #ifndef WORD_SIZE
-  #define WORD_SIZE 1
+  #define WORD_SIZE 4
 #endif
 
 /* Size of big-numbers in bytes */
-#define BN_ARRAY_SIZE    (128 / WORD_SIZE)
+#define BN_ARRAY_SIZE    (65536 / WORD_SIZE)
 
 
 /* Here comes the compile-time specialization for how large the underlying array size should be. */
@@ -117,5 +119,4 @@ void bignum_assign(struct bn* dst, struct bn* src);        /* Copy src into dst 
 
 
 #endif /* #ifndef __BIGNUM_H__ */
-
 

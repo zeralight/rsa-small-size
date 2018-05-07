@@ -18,12 +18,17 @@ There may well be room for performance-optimizations and improvements.
 
 */
 
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <assert.h>
 #include "bn.h"
 
-
+// global variables
+struct bn row;
+struct bn tmp;
+struct bn current;
+struct bn denom;
 
 /* Functions for shifting number in-place. */
 static void _lshift_one_bit(struct bn* a);
@@ -247,8 +252,7 @@ void bignum_mul(struct bn* a, struct bn* b, struct bn* c)
   require(b, "b is null");
   require(c, "c is null");
 
-  struct bn row;
-  struct bn tmp;
+
   int i, j;
 
   bignum_init(c);
@@ -279,9 +283,6 @@ void bignum_div(struct bn* a, struct bn* b, struct bn* c)
   require(b, "b is null");
   require(c, "c is null");
 
-  struct bn current;
-  struct bn denom;
-  struct bn tmp;
 
   bignum_from_int(&current, 1);               // int current = 1;
   bignum_assign(&denom, b);                   // denom = b
@@ -387,8 +388,6 @@ void bignum_mod(struct bn* a, struct bn* b, struct bn* c)
   require(b, "b is null");
   require(c, "c is null");
 
-  struct bn tmp;
-
   /* c = (a / b) */
   bignum_div(a, b, c);
 
@@ -488,8 +487,6 @@ void bignum_pow(struct bn* a, struct bn* b, struct bn* c)
   require(a, "a is null");
   require(b, "b is null");
   require(c, "c is null");
-
-  struct bn tmp;
 
   bignum_init(c);
 
@@ -598,5 +595,4 @@ static void _rshift_one_bit(struct bn* a)
   }
   a->array[BN_ARRAY_SIZE - 1] >>= 1;
 }
-
 
