@@ -18,17 +18,12 @@ There may well be room for performance-optimizations and improvements.
 
 */
 
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <assert.h>
 #include "bn.h"
 
-// global variables
-struct bn row;
-struct bn tmp;
-struct bn current;
-struct bn denom;
+
 
 /* Functions for shifting number in-place. */
 static void _lshift_one_bit(struct bn* a);
@@ -142,8 +137,8 @@ void bignum_to_string(struct bn* n, char* str, int nbytes)
     sprintf(&str[i], SPRINTF_FORMAT_STR, n->array[j]);
     i += (2 * WORD_SIZE); /* step WORD_SIZE hex-byte(s) forward in the string. */
     j -= 1;               /* step one element back in the array. */
+    //printf("(%d, %d) ", i, j);
   }
-
   /* Count leading zeros: */
   j = 0;
   while (str[j] == '0')
@@ -252,7 +247,8 @@ void bignum_mul(struct bn* a, struct bn* b, struct bn* c)
   require(b, "b is null");
   require(c, "c is null");
 
-
+  struct bn row;
+  struct bn tmp;
   int i, j;
 
   bignum_init(c);
@@ -283,6 +279,9 @@ void bignum_div(struct bn* a, struct bn* b, struct bn* c)
   require(b, "b is null");
   require(c, "c is null");
 
+  struct bn current;
+  struct bn denom;
+  struct bn tmp;
 
   bignum_from_int(&current, 1);               // int current = 1;
   bignum_assign(&denom, b);                   // denom = b
@@ -388,6 +387,8 @@ void bignum_mod(struct bn* a, struct bn* b, struct bn* c)
   require(b, "b is null");
   require(c, "c is null");
 
+  struct bn tmp;
+
   /* c = (a / b) */
   bignum_div(a, b, c);
 
@@ -469,13 +470,14 @@ int bignum_is_zero(struct bn* n)
 {
   require(n, "n is null");
 
-  int i;
+  uint32_t i;
   for (i = 0; i < BN_ARRAY_SIZE; ++i)
   {
     if (n->array[i])
     {
       return 0;
     }
+    //printf("i = %d\n", i);
   }
 
   return 1;
@@ -487,6 +489,8 @@ void bignum_pow(struct bn* a, struct bn* b, struct bn* c)
   require(a, "a is null");
   require(b, "b is null");
   require(c, "c is null");
+
+  struct bn tmp;
 
   bignum_init(c);
 
@@ -595,4 +599,5 @@ static void _rshift_one_bit(struct bn* a)
   }
   a->array[BN_ARRAY_SIZE - 1] >>= 1;
 }
+
 

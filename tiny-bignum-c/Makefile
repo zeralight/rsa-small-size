@@ -1,10 +1,42 @@
 CC     := gcc
 MACROS := 
-CFLAGS := -std=c99 -I. -Wundef -Wall -Wextra -O3 $(MACROS)
+CFLAGS := -I. -g -std=c99 -Wundef -Wall -Wextra -O3 $(MACROS)
 
-
-all:
+pkcs_rsa_oaep_encrypt:
+	$(CC) $(CFLAGS) bn.c rsa.c sha1.c oaep.c pkcs_rsa_oaep_encrypt.c -o ./build/pkcs_rsa_oaep_encrypt
+rsa:
+	$(CC) $(CFLAGS) -DRSA_MAIN bn.c ./rsa.c         -o ./build/test_rsa
+sha1:
+	$(CC) $(CFLAGS) -DSHA1_MAIN sha1.c -o ./build/sha1
+oaep:
+	$(CC) $(CFLAGS) -DTEST -DOAEP_MAIN sha1.c oaep.c -o ./build/oaep
+tests:
+	$(CC) $(CFLAGS) bn.c ./tests/load_cmp.c    -o ./build/test_load_cmp
 	$(CC) $(CFLAGS) bn.c ./tests/factorial.c   -o ./build/test_factorial
-	$(CC) $(CFLAGS) *.c ./tests/rsa.c         -o ./build/test_rsa
+
+
+
+test:
+	@echo
+	@echo ================================================================================
+	@./build/test_golden
+	@echo ================================================================================
+	@./build/test_hand_picked
+	@echo ================================================================================
+	@./build/test_load_cmp
+	@echo ================================================================================
+	@python ./scripts/fact100.py
+	@./build/test_factorial
+	@echo ================================================================================
+	@python ./scripts/test_old_errors.py
+	@echo ================================================================================
+	@#./build/test_rsa
+	@#echo ================================================================================
+	@python ./scripts/test_rand.py 1000
+	@echo ================================================================================
+	@echo
+
+clean:
+	@rm -f ./build/*
 
 

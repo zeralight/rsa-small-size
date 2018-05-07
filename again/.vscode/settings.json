@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "tiger.h": "c",
-        "stdio.h": "c",
-        "bn.h": "c",
-        "string.h": "c",
-        "sha1.h": "c"
-    }
-}

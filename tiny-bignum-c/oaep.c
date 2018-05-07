@@ -1,232 +1,158 @@
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 #include <stdlib.h>
-#include <arpa/inet.h>
+#include <stdint.h>
+#include <string.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include "sha1.h"
 
-#include "oaep.h"
-#include "tiger.h"
+static const unsigned char params[] = "SHA-1 MGF1";
 
-/* tiger hash of "CLNT" */
-static const uint8_t hash_client[24] = {
-  0x05, 0xAE, 0x52, 0x8F, 0x60, 0x10, 0x14, 0xCB,
-  0x61, 0xE0, 0x91, 0x3D, 0x66, 0x28, 0xB4, 0x3E,
-  0x33, 0x62, 0xB3, 0x70, 0xE4, 0xD6, 0x9E, 0xB6
-};
+static void fill_random(uint8_t* seed, uint32_t hLen)
+{
+  uint32_t i;
+  for (i = 0; i < hLen; ++i)
+  seed[i] = rand();
+}
 
-/* tiger hash of "SRVR" */
-static const uint8_t hash_server[24] = {
-  0x72, 0xF5, 0x3D, 0x22, 0x3D, 0x8B, 0xB2, 0x26,
-  0x37, 0x4C, 0xE1, 0x90, 0xB6, 0xEA, 0x05, 0xE6,
-  0x5B, 0xF4, 0x71, 0x48, 0xDE, 0xAF, 0x4D, 0x4F
-};
+uint8_t* pkcs_mgf1(uint8_t* seed, uint32_t seedOffset, uint32_t seedLength, uint32_t desiredLength)
+{
+  uint32_t hLen = 20;
+  uint32_t offset = 0;
+  uint32_t i = 0;
 
-static inline uint8_t *MGF1(uint8_t *seed, uint32_t seedLen, uint32_t maskLen) {
-  uint32_t max, mod, i, dataLen;
-  uint8_t *data, *output, *tmp;
+  uint8_t* mask = malloc(desiredLength);
+  uint8_t* temp = malloc(seedLength+4);
+  uint8_t* sha1_buf = malloc(SHA1_HASH_LEN);
+  memcpy(temp+4, seed+seedOffset, seedLength);
+  while (offset < desiredLength)
+  {
+    temp[0] = (uint8_t) ((i >> 24) & 255);
+    temp[1] = (uint8_t) ((i >> 16) & 255);
+    temp[2] = (uint8_t) ((i >> 8) & 255);
+    temp[3] = (uint8_t) (i & 255);
+    
+    uint32_t remaining = desiredLength - offset;
+    sha1_uint8_t(temp, seedLength+4, sha1_buf);
+    memcpy(mask+offset, sha1_buf, remaining < hLen ? remaining : hLen);
+    offset += hLen;
+    ++i;
+  }
+  free(sha1_buf);
+  free(temp);
 
-  dataLen = seedLen+4;
-  data = malloc(dataLen);
-  if(!data) return NULL;
-  memcpy(data, seed, seedLen);
+  return mask;
+}
 
-  mod = maskLen % hLen;
-  max = mod ? ((maskLen-mod)/hLen)+1 : (maskLen/hLen);
-  output = malloc(max*hLen);
-  if(!output) {
-    free(data);
+uint8_t* pkcs_oaep_mgf1_encode(uint8_t* message, uint32_t mLen, uint32_t length)
+{
+  uint32_t hLen = SHA1_HASH_LEN;
+  if (mLen > length - (hLen << 1) - 1)
+  {
+    printf("Message Too Long\n");
     return NULL;
   }
-  tmp = output;
 
-  for(i=0; i<max; i++) {
-    *(uint32_t *)(data+seedLen) = htonl(i);
-    tiger(data, dataLen, tmp);
-    tmp += hLen;
-  }
-  free(data);
-  return output;
+  uint8_t* sha1_buf = malloc(SHA1_HASH_LEN);
+  uint32_t zeroPad = length - mLen - (hLen << 1) - 1;
+  uint8_t* dataBlock = malloc(length - hLen);
+  
+  sha1(params, sizeof params - 1, sha1_buf);
+  memcpy(dataBlock, sha1_buf, hLen);
+  memcpy(dataBlock + hLen + zeroPad + 1, message, mLen);
+  dataBlock[hLen + zeroPad] = 0x01;
+  
+  uint8_t* seed = malloc(hLen);
+  fill_random(seed, hLen);
+  
+  uint8_t* dataBlockMask = pkcs_mgf1(seed, 0, hLen, length - hLen);
+  for (uint32_t i = 0; i < length - hLen; ++i)
+    dataBlock[i] ^= dataBlockMask[i];
+  
+  uint8_t* seedMask = pkcs_mgf1(dataBlock, 0, length - hLen, hLen);
+  for (uint32_t i = 0; i < hLen; ++i)
+    seed[i] ^= seedMask[i];
+  
+  uint8_t* padded = malloc(length);
+  memset(padded, 0, length);
+  memcpy(padded, seed, hLen);
+  memcpy(padded + hLen, dataBlock, length - hLen);
+
+  free(sha1_buf);
+  free(dataBlock);
+  free(seed);
+  free(dataBlockMask);
+  free(seedMask);
+
+  return padded;
 }
 
-static inline int32_t fill_random(uint8_t *dest, uint32_t len) {
-  int32_t fd, bytes;
 
-  fd = open("/dev/urandom", O_RDONLY);
-  if(fd == -1) return -1;
-  bytes = read(fd, dest, len);
-  close(fd);
-  if(bytes != (ssize_t)len) return -1;
-  return 0;
+uint8_t* pkcs_oaep_mgf1_decode(uint8_t* message, uint32_t mLen)
+{
+  uint32_t hLen = SHA1_HASH_LEN;
+  if (mLen < (hLen << 1) + 1)
+  {
+    printf("95. Invalid OAEP MGF1 format.");
+    return NULL;
+  }
+
+  uint8_t* copy = malloc(mLen);
+  memcpy(copy, message, mLen);
+  
+  uint8_t* seedMask = pkcs_mgf1(copy, hLen, mLen - hLen, hLen);
+  for (uint32_t i = 0; i < hLen; ++i)
+    copy[i] ^= seedMask[i];
+ 
+  uint8_t* paramsHash = sha1_with_malloc(params, sizeof params - 1);
+  uint8_t* dataBlockMask = pkcs_mgf1(copy, 0, hLen, mLen - hLen);
+  int32_t index = -1;
+  for (uint32_t i = hLen; i < mLen; ++i)
+  {
+    copy[i] ^= dataBlockMask[i - hLen];
+    if (i < (hLen << 1) && copy[i] != paramsHash[i - hLen])
+    {
+        printf("113. Invalid OAEP MFG1 format.");
+        return NULL;
+    } else if (index == -1 && copy[i] == 1)
+    {
+      index = i+1;
+    }
+  }
+
+  if (index == -1 || index == (int32_t)mLen)
+  {
+    printf("119. Invalid OAEP MFG1 format.");
+    return NULL;
+  }
+  uint8_t* unpadded = malloc(mLen - index);
+  memset(unpadded, 0, mLen - index);
+  memcpy(unpadded, copy + index, mLen - index);
+  
+  free(copy);
+  free(seedMask);
+  free(paramsHash);
+  free(dataBlockMask);
+
+  return unpadded;
 }
 
-/* possibly? resist linearization */
-static inline uint32_t is_same(const uint8_t *a, const uint8_t *b, const uint32_t len) {
-  uint32_t i;
-  uint64_t acc;
-
-  acc = 0;
-  for(i=0; i<len; i++)
-    acc += a[i] ^ b[i];
-  if(acc > 0)
-    return 0;
-  else
-    return 1;
-}
-
-int32_t oaep_encode(uint8_t *M, uint32_t mLen, uint32_t k, lbl_t label, uint8_t *EM) {
-  uint8_t *DB, *seed, *mask;
-  uint32_t dbLen, i;
-
-  if((int32_t)mLen > (int32_t)(k-2*hLen-2)) {
-    return -1;
-  }
-
-  dbLen = (k-hLen-1);
-  memset(EM, 0, k);
-  seed = EM+1;
-  DB = EM+1+hLen;
-
-  if(label == LABEL_CLIENT)
-    memcpy(DB, hash_client, hLen);
-  else /* LABEL_SERVER */
-    memcpy(DB, hash_server, hLen);
-  DB[dbLen-mLen-1] = 0x01;
-  memcpy(DB+(dbLen-mLen), M, mLen);
-
-  if( fill_random(seed, hLen) == -1 )
-    return -3;
-
-  mask = MGF1(seed, hLen, dbLen);
-  if(!mask) return -2;
-  for(i=0; i<dbLen; i++)
-    DB[i] ^= mask[i];
-  free(mask);
-
-  mask = MGF1(DB, dbLen, hLen);
-  if(!mask) return -2;
-  for(i=0; i<hLen; i++)
-    seed[i] ^= mask[i];
-  free(mask);
-
-  return 0;
-}
-
-int32_t oaep_decode(uint8_t *EM, uint32_t k, lbl_t label) {
-  int32_t i, dbLen, fail, pass;
-  uint8_t *mask, *DB, *seed;
-  const uint8_t *lHash;
-
-  if((int32_t)k < (int32_t)(2*hLen+2))
-    return -5;
-
-  dbLen = k - hLen - 1;
-  seed = EM+1;
-  DB = EM+1+hLen;
-
-  mask = MGF1(DB, dbLen, hLen);
-  if(!mask) return -2;
-  for(i=0; i<(int32_t)hLen; i++)
-    seed[i] ^= mask[i];
-  free(mask);
-  mask = MGF1(seed, hLen, dbLen);
-  if(!mask) return -2;
-  for(i=0; i<dbLen; i++)
-    DB[i] ^= mask[i];
-  free(mask);
-
-  /* TODO: is this still vulnerable to linearization? */
-  fail = pass = 0;
-  if(EM[0])
-    fail++;
-  else
-    pass++;
-  if(label == LABEL_CLIENT)
-    lHash = hash_client;
-  else
-    lHash = hash_server;
-  if(!is_same(lHash, DB, hLen))
-    fail++;
-  else
-    pass++;
-  for(i=hLen; i<dbLen; i++) {
-    if(DB[i] != 0x00)
-      break;
-  }
-  if(i == dbLen || DB[i] != 0x01)
-    fail++;
-  else
-    pass++;
-  pass = dbLen - i - 1;
-  while(i++ < dbLen);
-
-  if(fail)
-    return -5;
-  else
-    return pass;
-}
-
-#if defined(TEST)
-int main(int argc, char **argv) {
-  int32_t i, padRet;
-  uint8_t *EM, *tmp;
-  uint8_t hash[3*hLen];
-
-  if(argc != 2) {
-    printf("Usage\n");
-    return -1;
-  }
-  memset(hash, 0xCD, sizeof(hash));
-  tiger((uint8_t *)argv[1], strlen(argv[1]), hash+hLen);
-  i = 1024; /* minimum 592 */
-  EM = malloc(1024/8);
-  if(!EM) {
-    printf("Unable to allocate memory for encoded message.\n");
-    return -1;
-  }
-
-  padRet = oaep_encode(hash, sizeof(hash), (1024/8), LABEL_CLIENT, EM);
-  if(padRet < 0) {
-    printf("Failed to encode message, got %d\n", padRet);
-    return -1;
-  }
-
-  printf("Encoded message:\n");
-  for(i=0; i<(1024/8); i++)
-    printf("%02X ", EM[i]);
+#if defined(OAEP_MAIN)
+int main() {
+  unsigned char input[] = "I wonder if it will work";
+  uint8_t* encoded = pkcs_oaep_mgf1_encode(input, sizeof input - 1, 256);
+  printf("Encoded:\n");
+  for (int i = 0; i < 256; ++i)
+    printf("%02x", encoded[i]);
   printf("\n");
 
-  padRet = oaep_decode(EM, (1024/8), LABEL_CLIENT);
-  if(padRet < 0) {
-    printf("Failed to decode message, got %d\n", padRet);
-    return -1;
-  }
-  printf("padRet is %d, hash is %d bytes\n", padRet, sizeof(hash));
-
-  printf("Decoded message:\n");
-  tmp = EM;
-  printf("Y:\t\t%02X\n", *tmp);
-  tmp++;
-  printf("Seed:\t\t");
-  for(i=0; i<(int32_t)hLen; i++, tmp++)
-    printf("%02X", *tmp);
-  printf("\nDB/lHash':\t");
-  for(i=0; i<(int32_t)hLen; i++, tmp++)
-    printf("%02X", *tmp);
-  printf("\nDB/PS+0x01:\t");
-  for(i=0; !tmp[i]; i++)
-    printf("%02X", tmp[i]);
-  printf("%02X\n", tmp[i]);
-  tmp += i + 1;
-  printf("M:\t\t");
-  for(i=0; i<padRet; i++, tmp++)
-    printf("%02X", *tmp);
+  uint8_t* decoded = pkcs_oaep_mgf1_decode(encoded, 256);
+  printf("Decoded:\n");
+  for (uint32_t i = 0; i < sizeof input - 1; ++i)
+    printf("%c", decoded[i]);
   printf("\n");
 
-  free(EM);
+  free(encoded);
+  free(decoded);
   return 0;
 }
 #endif
