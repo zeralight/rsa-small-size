@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "sha1.h"
+#include "util.h"
 
 static uint8_t block[64], extra_block[64];
 uint32_t H[5] =
@@ -156,32 +157,31 @@ int sha1(const unsigned char* input, uint32_t len, unsigned char* output)
   sha1_init();
 
   uint32_t i = 0;
-
   while (i+64 < len)
   {
     memcpy(block, input+i, 64);
     doSha1(block);
     i += 64;
   }
-  if (i < len)
-  {
+  uint32_t done = 0;
+  if (i < len) {
     memcpy(block, input+i, len-i);
-    uint32_t done = len-i;
-    uint32_t j;
-    for (j = done; j < 64; ++j)
-      block[j] = extra_block[j] = 0x00;
-    int twoBlocks = pad(block, extra_block, done, len);
-    doSha1(block);
-    if(twoBlocks == 1)
-    {
-      doSha1(extra_block);
-    }
+    done = len-i;
+  }
+  uint32_t j;
+  for (j = done; j < 64; ++j)
+    block[j] = extra_block[j] = 0x00;
+  int twoBlocks = pad(block, extra_block, done, len);
+  doSha1(block);
+  if(twoBlocks == 1)
+  {
+    doSha1(extra_block);
   }
   memset(output, 0, 20);
   for (i = 0; i < 5; ++i)
   {
-    uint32_t x = htonl(H[i]);
-    memcpy(output+4*i, &x, 4);
+    i2osp(output+4*i, H+i, 4);
+    //memcpy(output+4*i, &x, 4);
   }
   return 0;
 }
@@ -211,12 +211,13 @@ int main()
   unsigned char input[] = "I wonder if it will work";
   //unsigned char input[] = "SHA-1 MGF1"; 
   unsigned char output[20];
-  sha1_init();
   sha1(input, sizeof input - 1, output);
 
-  int i;
-  for (i = 0; i < 20; i++)
-    printf("%02x", output[i]);
+  printf("sha1(I wonder if it will work) = "); print_hex(output, 20);
+
+  unsigned char inp2[] = "";
+  sha1(inp2, sizeof inp2 - 1, output);
+  printf("sha1() = "); print_hex(output, 20);
   printf("\n");
 }
 #endif
