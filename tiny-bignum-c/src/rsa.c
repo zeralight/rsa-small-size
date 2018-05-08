@@ -4,6 +4,7 @@
 
 #include "bn.h"
 #include "rsa.h"
+#include "util.h"
 
 /* O(log n) */
 static void pow_mod(struct bn* a, struct bn* b, struct bn* n, struct bn* res)
@@ -34,7 +35,6 @@ static void pow_mod(struct bn* a, struct bn* b, struct bn* n, struct bn* res)
     bignum_mul(&tmpa, &tmpa, &tmp);
     bignum_mod(&tmp, n, &tmpa);
   }
-  printf("Out of pow_mod\n");
 }
 
 unsigned char* rsa_decrypt(const unsigned char* from,
@@ -87,19 +87,10 @@ unsigned char* rsa_encrypt(const unsigned char* from,
   bignum_from_bytes(&n, _n, nlen);
   bignum_from_int(&e, _e);
 
-   // checking everything good
-   printf("checking:\n");
-   unsigned char buffer[8192];
-   bignum_to_bytes(&m, buffer, flen);
-   printf("from: "); print_hex(buffer, flen);
-   bignum_to_bytes(&n, buffer, nlen);
-   printf("n: "); print_hex(buffer, nlen);
-
   pow_mod(&m, &e, &n, &c);
 
   unsigned char* cipher = malloc(RSA_KEYSIZE);
   bignum_to_bytes(&c, cipher, RSA_KEYSIZE);
-  printf("cipher: "); print_hex(cipher, RSA_KEYSIZE);
 
   return cipher;
 }
@@ -211,11 +202,54 @@ static void test_rsa2048(void)
   printf("m = %s \n", buf);
 }
 
+static void another_test_rsa2048()
+{
+  unsigned char from[] = "2f1231ca2c749af82dd6ed90f4cc1d2b9cc33da6865065cc57785ecb3ab8a72f744fba9c00658f523635b908529f18b580ec62475ebd0d386c79cd587a3fe7ddc883c045f8660c6412457ba927fa16245cf782d647949da21866e80852306b69bf994b84995440e47e0d9074fb2c7c19a21d5b6e4d5b49e1328592f719ee51911e73d8eecb002b4ea1291033eb8a0770fe04adbd2134f909a868ff0670599515af2d5077b20fa98759ab9759ac5cfeab57b030c5113dbb3a27c78593461e0eba9372e2399b10a1d83bc33953187b837d2c69fae7407805932d5cb3213d1925dac8b792acb0687a0702b048db9ed7e76bf68a5bc468d1b731c2224f2d3e964fca";
+  unsigned char rsa_n[] = "f4f8fac0c1822f90c1ff35b817efa46256b70d77e12982653a375986e4512643de269599b2d10b660287bea5a73e768ae488a0d7d38abefecca5f65968be6acaa24453db4614bf7a185bbfd5730b5770944949288677701028ad644c234fff852b0c453651947be3a35a34a07d2736f83c9f126f50d77020cfc37f917995da89a9f561340661fcaf1a3324ac03adf960e242e648dfb9b7ca8bc7cdd18c75a00c202123a9032990859deee8de17457d5f71eb435b18276f82f7d65d6af966b9f33f93fd0714b8b311904daba68866b592762a47c6b7f6dc909a3123149b01b1c721fffa907b877784621ac8ec0aa3fe4f185636890a0fd327d8fde0a389adb4b1";
+  unsigned char rsa_d[] = "40286523ce8a5602c78c1b79976b3fd63177c7a339e9312969d1cd34b2df3df2506032960a6b0d5d2e14772dd35b5c988bb9ecc619b520c882b884886e1250cdb929c3fc8da22973c4a562dc7840e429abec75a8936efc7e7ee8ca77d657c148133a27764e6f60f30179428735bfeb79a006d941261f0652d19715f5f7adf389cf36e879c2990e1da0ee67f218abbd5f42c82bbb696869dbc5a504465702c1c5d8b637930cebc80021ec25e048f59ee80aab5cb515a60d10ef01329b4cd543ed195b7e4af0d8f75e826b878f76392ce9afe4f935957536451f3dc4637235d831a669d986672ffd4c636d8d1cefedd72a3fdd20b084063e12a980a9068ff67b71";
+  unsigned char rsa_e[] = "010001";
+
+  struct bn n;
+  struct bn m;
+  struct bn e;
+  struct bn d;
+  struct bn c;
+
+  bignum_init(&n);
+  bignum_init(&m);
+  bignum_init(&e);
+  bignum_init(&d);
+  bignum_init(&c);
+
+  bignum_from_string(&m, from, sizeof from - 1);
+  bignum_from_string(&n, rsa_n, sizeof rsa_n - 1);
+  bignum_from_string(&d, rsa_d, sizeof rsa_d - 1);
+  bignum_from_string(&e, rsa_e, sizeof rsa_e - 1);
+
+  pow_mod(&m, &e, &n, &c);
+
+  unsigned char output[RSA_KEYSIZE];
+  bignum_to_bytes(&c, output, RSA_KEYSIZE);
+  printf("cipher: "); print_hex(output, RSA_KEYSIZE);
+
+  unsigned char expected_hex_output[] = "2f1231ca2c749af82dd6ed90f4cc1d2b9cc33da6865065cc57785ecb3ab8a72f744fba9c00658f523635b908529f18b580ec62475ebd0d386c79cd587a3fe7ddc883c045f8660c6412457ba927fa16245cf782d647949da21866e80852306b69bf994b84995440e47e0d9074fb2c7c19a21d5b6e4d5b49e1328592f719ee51911e73d8eecb002b4ea1291033eb8a0770fe04adbd2134f909a868ff0670599515af2d5077b20fa98759ab9759ac5cfeab57b030c5113dbb3a27c78593461e0eba9372e2399b10a1d83bc33953187b837d2c69fae7407805932d5cb3213d1925dac8b792acb0687a0702b048db9ed7e76bf68a5bc468d1b731c2224f2d3e964fca";
+  unsigned char expected_output[RSA_KEYSIZE];
+  unhexlify(expected_hex_output, 2*RSA_KEYSIZE, expected_output);
+  printf("expected output: "); print_hex(expected_output, RSA_KEYSIZE);
+  fflush(stdout);
+  
+  assert (memcmp(expected_output, output, RSA_KEYSIZE) == 0);
+
+  printf("ok\n");
+}
+
 int main()
 {
   //test_rsa1024();
 
-  test_rsa2048();
+  //test_rsa2048();
+
+  another_test_rsa2048();
 
   printf("\n");
 

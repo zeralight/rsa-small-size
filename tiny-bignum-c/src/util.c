@@ -42,8 +42,8 @@ void unhexlify(const unsigned char* from, uint32_t len, unsigned char* to)
     {
         uint8_t a = from[2*i];
         uint8_t b = from[2*i+1];
-        a -= (a < '9') ? '0' : 'a'-10;
-        b -= (b < '9') ? '0' : 'a'-10;
+        a -= (a < 'a') ? '0' : 'a'-10;
+        b -= (b < 'a') ? '0' : 'a'-10;
         to[i] = (a << 4) + b;
     }
 }
