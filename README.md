@@ -63,4 +63,14 @@
                             uint32_t e)
         
         the returned result is allocated on heap, you need to free() it.
-        
+  
+  
+  
+  
+  
+  
+  
+  FIXME:
+  - remove usuless code
+  - improve error handling
+  - PEM/DER support 
