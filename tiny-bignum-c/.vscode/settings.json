@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "bn.h": "c",
-        "rsa.h": "c",
-        "stdint.h": "c"
-    }
-}
