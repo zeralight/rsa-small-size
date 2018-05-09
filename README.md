@@ -64,7 +64,7 @@
         
         the returned result is allocated on heap, you need to free() it.
   
-  
+        cf. http://textuploader.com/dfobj to understand how to use the program later.
   
   
   

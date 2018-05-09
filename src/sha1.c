@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "sha1.h"
 #include "util.h"
@@ -18,14 +17,7 @@ uint32_t H[5] =
 };
 
 static void sha1_init()
-{
-  static int srand_done = 0;
-  if (!srand_done)
-  {
-    srand(time(NULL));
-    srand_done = 1;
-  }
-
+{ 
   H[0] = 0x67452301;
   H[1] = 0xEFCDAB89;
   H[2] = 0x98BADCFE;
@@ -33,6 +25,7 @@ static void sha1_init()
   H[4] = 0xC3D2E1F0;
 
 }
+
 uint32_t rotl( uint32_t x, int shift )
 {
   return (x << shift) | (x >> (sizeof(x)*8 - shift));
@@ -81,8 +74,8 @@ uint32_t kForRound( int roundNum )
 int pad(uint8_t * block, uint8_t * extraBlock, int blockSize, int fileSize)
 {
   int twoBlocks = 0;
-  //l is block size in bits
-  uint64_t l = (uint64_t)fileSize * 8;
+  /* l is block size in bits */
+  uint32_t l = (uint32_t)fileSize * 8;
   if(blockSize <= 55)
   {
     block[blockSize] = 0x80;
@@ -116,10 +109,10 @@ void doSha1(uint8_t * block)
   for( i = 0; i < 16; i++ )
   {
     int offset = (i*4);
-    w[i] =  block[offset]     << 24 |
-      block[offset + 1] << 16 |
-      block[offset + 2] << 8  |
-      block[offset + 3];
+      w[i] =  (int32_t) (block[offset]) << 24 |
+              (int32_t) (block[offset + 1]) << 16 |
+              (int32_t) (block[offset + 2]) << 8  |
+              block[offset + 3];
   }
 
   for( i = 16; i < 80; i++ )
@@ -181,7 +174,7 @@ int sha1(const unsigned char* input, uint32_t len, unsigned char* output)
   for (i = 0; i < 5; ++i)
   {
     i2osp(output+4*i, H+i, 4);
-    //memcpy(output+4*i, &x, 4);
+    /* memcpy(output+4*i, &x, 4); */
   }
   return 0;
 }
@@ -209,15 +202,37 @@ uint8_t* sha1_uint8_t_with_malloc(const uint8_t* input, uint32_t len)
 int main()
 {
   unsigned char input[] = "I wonder if it will work";
-  //unsigned char input[] = "SHA-1 MGF1"; 
+  unsigned char input2[] = "";
+  unsigned char input3[] = "Hello word";
+  unsigned char input4[] = "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
   unsigned char output[20];
+  unsigned char expected_output_hex[40];
+  unsigned char expected_output[20];
+
   sha1(input, sizeof input - 1, output);
+  printf("sha1(%s) = ", input); print_hex(output, 20);
+  memcpy(expected_output_hex, "c0220bd1a3d3c0fb52f1134654504187f0686f33", 40);
+  unhexlify(expected_output_hex, 40, expected_output);
+  require (memcmp(output, expected_output, 20) == 0, "invalid hash");
 
-  printf("sha1(I wonder if it will work) = "); print_hex(output, 20);
-
-  unsigned char inp2[] = "";
-  sha1(inp2, sizeof inp2 - 1, output);
+  sha1(input2, sizeof input2 - 1, output);
   printf("sha1() = "); print_hex(output, 20);
-  printf("\n");
+  memcpy(expected_output_hex, "da39a3ee5e6b4b0d3255bfef95601890afd80709", 40);
+  unhexlify(expected_output_hex, 40, expected_output);
+  require (memcmp(output, expected_output, 20) == 0, "invalid hash");
+
+  sha1(input3, sizeof input3 - 1, output);
+  printf("sha1(%s) = ", input3); print_hex(output, 20);
+  memcpy(expected_output_hex, "739921b9bee642f0c9466d88e6a9de77be52d91f", 40);
+  unhexlify(expected_output_hex, 40, expected_output);
+  require (memcmp(output, expected_output, 20) == 0, "invalid hash");
+
+  sha1(input4, sizeof input4 - 1, output);
+  printf("sha1(%s) = ", input4); print_hex(output, 20);
+  memcpy(expected_output_hex, "f8036ad391e0b6057d39ab1a881f4ab3e7a65c51", 40);
+  unhexlify(expected_output_hex, 40, expected_output);
+  require (memcmp(output, expected_output, 20) == 0, "invalid hash");
+
+  printf("OK\n");
 }
 #endif

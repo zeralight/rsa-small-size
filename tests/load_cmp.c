@@ -12,7 +12,110 @@
 #include <stdint.h>
 #include <assert.h>
 #include "bn.h"
+#include "util.h"
 
+
+static void test_bignum_sign()
+{
+  struct bn x, y, z;
+
+  bignum_from_int(&z, 1); // z = 1
+  assert (z.array[0] == 1 && !z.negative);
+  
+  bignum_dec(&z); // z = 0
+  assert (z.array[0] == 0&& !z.negative);
+
+  bignum_dec(&z); // z = -1
+  assert (z.array[0] == 1 && z.negative);
+
+  bignum_dec(&z); // z = -2
+  bignum_inc(&z); // z = -1
+  assert (z.array[0] == 1 && z.negative);
+  bignum_inc(&z); // z = 0
+  assert (z.array[0] == 0 && !z.negative);
+  bignum_inc(&z); // z = 1
+  assert (z.array[0] == 1 && !z.negative);
+
+  bignum_from_int(&x, 1); // x = 1
+  bignum_from_int(&y, 1); // y = 1
+  bignum_sub(&x, &y, &z); // z = 0
+  assert (z.array[0] == 0 && !z.negative);
+
+  bignum_from_int(&x, 2); // x = 2
+  bignum_from_int(&y, 1); // y = 1
+  bignum_sub(&x, &y, &z); // z = 1
+  assert (z.array[0] == 1 && !z.negative);
+
+  bignum_from_int(&x, 1); // x = 1
+  bignum_from_int(&y, 2); // y = 2
+  bignum_sub(&x, &y, &z); // z = -1
+  assert (z.array[0] == 1 && z.negative);
+
+  bignum_from_int(&x, 1); // x = 1
+  bignum_dec(&x); // x = 0
+  bignum_dec(&x); // x = -1
+  bignum_from_int(&y, 2); // y = 2
+  bignum_sub(&x, &y, &z); // z = -3
+  assert (z.array[0] == 3 && z.negative);
+  bignum_from_int(&y, 0); // y = 0
+  bignum_sub(&x, &y, &z); // z = -1
+  assert (z.array[0] == 1 && z.negative);
+
+  bignum_from_int(&x, 0); // x = 0
+  bignum_dec(&x); // x = -1
+  bignum_from_int(&y, 0); // y = 0
+  bignum_dec(&y); // y = -1
+  bignum_sub(&x, &y, &z); // z = 0
+  assert (z.array[0] == 0 && !z.negative);
+  bignum_dec(&x); // x = -2
+  bignum_sub(&x, &y, &z); // z = -1
+  assert (z.array[0] == 1 && z.negative);
+  bignum_dec(&y); // y = -2
+  bignum_dec(&y); // y = -3
+  bignum_sub(&x, &y, &z); // z = 1
+  assert (z.array[0] == 1 && !z.negative);
+
+
+  bignum_from_int(&x, 1); // x = 1
+  bignum_from_int(&y, 1); // y = 1
+  bignum_add(&x, &y, &z); // z = 2
+  assert (z.array[0] == 2 && !z.negative);
+  bignum_dec(&x); // x = 0
+  bignum_dec(&x); // x = -1
+  bignum_add(&x, &y, &z); // z = 0
+  assert (z.array[0] == 0 && !z.negative);
+  bignum_dec(&x); // x = -2
+  bignum_add(&x, &y, &z); // z = -1
+  assert (z.array[0] == 1 && z.negative);
+  bignum_from_int(&y, 3); // y = 3
+  bignum_add(&x, &y, &z); // z = -1
+  assert (z.array[0] == 1 && !z.negative);
+  bignum_from_int(&x, 2); // x = 1
+  bignum_from_int(&y, 0); // y = 0
+  bignum_dec(&y); // y = 0
+  bignum_add(&x, &y, &z); // z = 
+  assert (z.array[0] == 1 && !z.negative);
+  bignum_dec(&y); // y = 1
+  bignum_add(&x, &y, &z);
+  assert (z.array[0] == 0 && !z.negative);
+  bignum_dec(&y); // y = -2
+  bignum_add(&x, &y, &z);
+  assert (z.array[0] == 1 && z.negative);
+
+  bignum_from_int(&x, 1);
+  bignum_from_int(&y, 0);
+  bignum_dec(&y);
+  assert (bignum_cmp(&x, &y) > 0);
+  bignum_dec(&x);
+  assert (bignum_cmp(&x, &y) > 0);
+  bignum_dec(&x);
+  assert (bignum_cmp(&x, &y) == 0);
+  bignum_dec(&x);
+  assert (bignum_cmp(&x, &y) < 0);
+  bignum_inc(&y);
+  assert (bignum_cmp(&x, &y) < 0);
+
+}
 
 static void test_bignum_bytes()
 {
@@ -38,6 +141,7 @@ static void test_bignum_bytes()
 int main()
 {
   test_bignum_bytes();
+  test_bignum_sign();
 
   char sabuf[8192];
   char sbbuf[8192];
