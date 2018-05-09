@@ -145,9 +145,6 @@ unsigned char* pkcs_oaep(const unsigned char* message,
 
   /*  printf("oaep encoding: "); print_hex(em, RSA_KEYSIZE); */
 
-  /*  Step 3a, 3b, 3c */
-  unsigned char* m = pkcs_rsa_encrypt(em, 1 + hLen + dbLen, n, nlen, e);
-
   free(lHash);
   free(ps);
   free(db);
@@ -156,6 +153,10 @@ unsigned char* pkcs_oaep(const unsigned char* message,
   free(maskedDb);
   free(seedMask);
   free(maskedSeed);
+
+  /*  Step 3a, 3b, 3c */
+  unsigned char* m = pkcs_rsa_encrypt(em, 1 + hLen + dbLen, n, nlen, e);
+
   free(em);
 
   return m;

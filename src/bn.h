@@ -59,7 +59,7 @@ struct bn
 {
   DTYPE array[BN_ARRAY_SIZE];
   bool negative;
-  // uint32_t len;
+  uint16_t len;
 };
 
 
@@ -81,7 +81,7 @@ void bignum_from_bytes(struct bn* n, const unsigned char* bytes, uint32_t len); 
 /* Basic arithmetic operations:*/
 void bignum_add(struct bn* a, struct bn* b, struct bn* c); /* c = a + b*/ /* required*/
 void bignum_sub(struct bn* a, struct bn* b, struct bn* c); /* c = a - b*/ /* required*/
-void bignum_mul(struct bn* a, struct bn* b, struct bn* c); /* c = a*  b*/ /* required*/
+void bignum_mul(const struct bn* a, const struct bn* b, struct bn* c); /* c = a*  b*/ /* required*/
 void bignum_div(struct bn* a, struct bn* b, struct bn* c); /* c = a / b*/ /* required*/
 void bignum_mod(struct bn* a, struct bn* b, struct bn* c); /* c = a % b*/ /* required*/
 

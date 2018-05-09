@@ -11,7 +11,7 @@ sha1:
 load_cmp: 
 	$(CC) $(CFLAGS) -DIMPLEMENT_ALL -DBIGNUM_MAIN src/util.c src/bn.c ./tests/load_cmp.c    -o ./build/test_load_cmp
 factorial:
-	$(CC) $(CFLAGS) -DIMPLEMENT_ALL bn.c ./tests/factorial.c   -o ./build/test_factorial
+	$(CC) $(CFLAGS) -DIMPLEMENT_ALL src/util.c src/bn.c ./tests/factorial.c   -o ./build/test_factorial
 
 clean:
 	@rm -f ./build/*

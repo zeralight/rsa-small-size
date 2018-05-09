@@ -1,4 +1,9 @@
     
+    /*
+        TODO:
+            - test length implementation
+            - karatsuba shift_10 ?
+    */
     RSA Encryption Tool for H8S/2329 Family Embedded System
     Assumptions:
         According to the manual reference of the following document https://www.renesas.com/en-eu/document/hw-manual?hwLayerShowFlg=true&prdLayerId=113&layerName=H8S%252F2329&coronrService=document-prd-search&hwDocUrl=%2Fen-eu%2Fdoc%2Fproducts%2Fmpumcu%2F001%2Frej09b0220_h8s2329.pdf&hashKey=48c4c71aed4ab2d891bcfcd5ee20780a
