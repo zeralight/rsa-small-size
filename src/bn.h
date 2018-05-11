@@ -81,7 +81,9 @@ void bignum_from_bytes(struct bn* n, const unsigned char* bytes, uint32_t len); 
 /* Basic arithmetic operations:*/
 void bignum_add(struct bn* a, struct bn* b, struct bn* c); /* c = a + b*/ /* required*/
 void bignum_sub(struct bn* a, struct bn* b, struct bn* c); /* c = a - b*/ /* required*/
-void bignum_mul(const struct bn* a, const struct bn* b, struct bn* c); /* c = a*  b*/ /* required*/
+void bignum_mul(struct bn* a, struct bn* b, struct bn* c); /* c = a*  b*/ /* required*/
+void bignum_mul_naive(struct bn*, struct bn*, struct bn*);
+void bignum_mul_karatsuba(struct bn*, struct bn*, struct bn*);
 void bignum_div(struct bn* a, struct bn* b, struct bn* c); /* c = a / b*/ /* required*/
 void bignum_mod(struct bn* a, struct bn* b, struct bn* c); /* c = a % b*/ /* required*/
 
@@ -98,8 +100,10 @@ int  bignum_is_zero(struct bn* n);                         /* For comparison wit
 void bignum_inc(struct bn* n);                             /* Increment: add one to n*/
 void bignum_dec(struct bn* n);                             /* Decrement: subtract one from n*/
 void bignum_pow(struct bn* a, struct bn* b, struct bn* c); /* Calculate a^b -- e.g. 2^10 => 1024*/
-void bignum_assign(struct bn* dst, struct bn* src);        /* Copy src into dst -- dst := src*/ /* required*/
+void bignum_assign(struct bn* dst, const struct bn* src);        /* Copy src into dst -- dst := src*/ /* required*/
 
+void print_arr(const struct bn*);
+  
 #endif /* #ifndef __BIGNUM_H__*/
 
 

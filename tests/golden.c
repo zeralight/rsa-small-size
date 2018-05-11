@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "bn.h"
 
 
@@ -43,6 +45,9 @@ static struct test oracle[] =
   {'-', 0x707655, 0x50ffa8, 0x1f76ad },
 //./build/test_random 1 0000000000f0a990 00000000001cffd1 0000000000d3a9bf
   {'-', 0xf0a990, 0x1cffd1, 0xd3a9bf },
+  {'*', 2, 3, 6 },
+  {'*', 3, 4, 12},
+  {'*', 10, 12, 120 },
   {'*', 0x010203, 0x1020, 0x10407060 },
   {'*', 42, 0,   0 },
   {'*', 42, 1,   42 },
@@ -86,6 +91,8 @@ static struct test oracle[] =
   {'/', 0xe5a18e, 0x09ff82, 0x16 },
 //./build/test_random 3 000000000045edd0 000000000004ff1a 000000000000000d
   {'/', 0x45edd0, 0x04ff1a, 0x0d },
+  {'/', 0x30, 0xf8, 0 },
+  {'%', 0x30, 0xf8, 48 },
   {'%', 8, 3, 2 },
   {'%', 1024, 1000, 24 },
   {'%', 0xFFFFFF, 1234, 985 },
@@ -184,9 +191,82 @@ static struct test oracle[] =
 const int ntests = sizeof(oracle) / sizeof(*oracle);
 
 
+static void test_large_multiplication()
+{
+  struct bn a, b, c;
+  char buf[8192];
+
+  char n11[] = "8000000000000000000000000000000000000000000000000000000000000000";
+  char n21[] = "8000000000000000000000000000000000000000000000000000000000000000";
+  char expected1[] = "40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
+  char *n1, *n2, *expected;
+  n1 = n11;
+  n2 = n21;
+  expected = expected1;  
+  bignum_from_string(&a, n1, strlen(n1));
+  bignum_from_string(&b, n2, strlen(n2));
+
+  bignum_mul_naive(&a, &b, &c);
+  bignum_to_string(&c, buf, 8192);
+  assert (strcmp(expected, buf) == 0);
+
+  bignum_mul_karatsuba(&a, &b, &c);
+  bignum_to_string(&c, buf, 8192);
+  assert (strcmp(expected, buf) == 0);
+
+  char n12[] = "8080000000001000000000000000000000100000000000000000000000000000";
+  char n22[] = "8001000000000000000000001000000000000000000000000001000000000000";
+  char expected2[] = "40408080000008001000000008080000000801100000000000008080000100001000000000000000000000100000000000000000000000000000000000000000";
+  
+
+
+  n1 = n12;
+  n2 = n22;
+  expected = expected2;
+  bignum_from_string(&a, n1, strlen(n1));
+  bignum_from_string(&b, n2, strlen(n2));
+
+  bignum_mul_naive(&a, &b, &c);
+  // printf("mul_naive: c =\n"); print_arr(&c);
+  bignum_to_string(&c, buf, 8192);
+  assert (strcmp(expected, buf) == 0);
+
+  bignum_mul_karatsuba(&a, &b, &c);
+  // printf("mul_karatsuba: c =\n"); print_arr(&c);
+
+  bignum_to_string(&c, buf, 8192);
+  assert (strcmp(expected, buf) == 0);
+  
+  char n13[] = "40286523ce8a5602c78c1b79976b3fd63177c7a339e9312969d1cd34b2df3df2506032960a6b0d5d2e14772dd35b5c988bb9ecc619b520c882b884886e1250cdb929c3fc8da22973c4a562dc7840e429abec75a8936efc7e7ee8ca77d657c148133a27764e6f60f30179428735bfeb79a006d941261f0652d19715f5f7adf389cf36e879c2990e1da0ee67f218abbd5f42c82bbb696869dbc5a504465702c1c5d8b637930cebc80021ec25e048f59ee80aab5cb515a60d10ef01329b4cd543ed195b7e4af0d8f75e826b878f76392ce9afe4f935957536451f3dc4637235d831a669d986672ffd4c636d8d1cefedd72a3fdd20b084063e12a980a9068ff67b71";
+  char n23[] = "f4f8fac0c1822f90c1ff35b817efa46256b70d77e12982653a375986e4512643de269599b2d10b660287bea5a73e768ae488a0d7d38abefecca5f65968be6acaa24453db4614bf7a185bbfd5730b5770944949288677701028ad644c234fff852b0c453651947be3a35a34a07d2736f83c9f126f50d77020cfc37f917995da89a9f561340661fcaf1a3324ac03adf960e242e648dfb9b7ca8bc7cdd18c75a00c202123a9032990859deee8de17457d5f71eb435b18276f82f7d65d6af966b9f33f93fd0714b8b311904daba68866b592762a47c6b7f6dc909a3123149b01b1c721fffa907b877784621ac8ec0aa3fe4f185636890a0fd327d8fde0a389adb4b1";
+  char expected3[] = "3d64e65fdd1bd73b057020f994d4edffe899cfc3efcb3276569d182fa1bc0b1fb10045ec1195d3427abb34020938c2983a04c438ac315749dd44fa1f8ff019d6baef05a7dfc090bfe38266a2583af865bf1c9954977d088f8e0fd687d425cf0107027f030c8fddae0d003328ca1ec13037d81b641516839064350ad03cfdc8f38e5ee8c6483de138d150654396abf784826354993d48b91eba272cdfe3a6f6788e5b690b7f3a90a46b0fb8b269b86fbb2df431bcbd3be9b2ec89e63fd957a6ed5660efabb45cb27005592e720fb96ef3e08e1758740ec8d51e6c0bec75042aff72458eabfb1d1b596796f8328d32dcba9d5f35a5dc2eec3c2ac1e445f5783f8d31e398cd4752a0646d43009bcef253e29a24f5e7797f3d89f09a3cfe31bda25ab4c13b80882c49dfa5f079bba92ccc4b6ee448d02e897fad864ff8316ec5f1277ed808f3005b0ebf2cb4b823e12b7580acc326832516d3d7de35bcc649cff4f4216c68ab2ebeae05d8a21222ced4d8ac69b875eddd57cda4e6cce8940371ec5b7b08338e4d709b8020c287d3ba50d0ade5a0bfceada9851320cd0e8c81c109981d7c70076545e7f8812c76b8deeaa37a95f74fcbde2d11db8b6b844fadc66d51d81a6d964c3d95c17e7e944e313f08a54d922c5a35dac290304e7beb49ef53bf183835ca3659ff4f1357a496643a4b50ee6451ab6cf7fd9811e82556bc93cd21";
+  
+
+  n1 = n13;
+  n2 = n23;
+  expected = expected3;
+  bignum_from_string(&a, n1, strlen(n1));
+  bignum_from_string(&b, n2, strlen(n2));
+
+  bignum_mul_naive(&a, &b, &c);
+  // printf("mul_naive: c =\n"); print_arr(&c);
+  bignum_to_string(&c, buf, 8192);
+  assert (strcmp(expected, buf) == 0);
+
+  bignum_mul_karatsuba(&a, &b, &c);
+  // printf("mul_karatsuba: c =\n"); print_arr(&c);
+
+  bignum_to_string(&c, buf, 8192);
+  assert (strcmp(expected, buf) == 0);
+
+}
+
 
 int main()
 {
+  test_large_multiplication();
+
   struct bn sa, sb, sc, sd;
   uint32_t ia, ib, ic;
   char op;
@@ -196,6 +276,7 @@ int main()
 
   printf("\nRunning \"golden\" tests (parsed using from_int):\n\n");
 
+  unsigned char buffer[8192];
   int i;
   for (i = 0; i < ntests; ++i)
   {
@@ -229,6 +310,10 @@ int main()
       /* Crash program if operator is unsupported. */
       default:  require(0, "default switch-case hit");
     }
+    memset(buffer, 0, 8192);
+
+    // printf("sd: "); print_arr(&sd);
+    // printf("sc: "); print_arr(&sc);
 
     /* Verify validity: */
     test_passed = (bignum_cmp(&sc, &sd) == EQUAL);
@@ -262,6 +347,7 @@ int main()
       bignum_to_string(&sd, buf, sizeof(buf));
       printf("    d = %s \n", buf);
       printf("\n");
+      return 0;
     }
   }
 

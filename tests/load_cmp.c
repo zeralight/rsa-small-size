@@ -39,7 +39,7 @@ static void test_bignum_sign()
   bignum_from_int(&x, 1); // x = 1
   bignum_from_int(&y, 1); // y = 1
   bignum_sub(&x, &y, &z); // z = 0
-  assert (z.array[0] == 0 && !z.negative);
+  assert (bignum_is_zero(&z) && !z.negative);
 
   bignum_from_int(&x, 2); // x = 2
   bignum_from_int(&y, 1); // y = 1
@@ -66,7 +66,7 @@ static void test_bignum_sign()
   bignum_from_int(&y, 0); // y = 0
   bignum_dec(&y); // y = -1
   bignum_sub(&x, &y, &z); // z = 0
-  assert (z.array[0] == 0 && !z.negative);
+  assert (bignum_is_zero(&z) && !z.negative);
   bignum_dec(&x); // x = -2
   bignum_sub(&x, &y, &z); // z = -1
   assert (z.array[0] == 1 && z.negative);
@@ -83,7 +83,7 @@ static void test_bignum_sign()
   bignum_dec(&x); // x = 0
   bignum_dec(&x); // x = -1
   bignum_add(&x, &y, &z); // z = 0
-  assert (z.array[0] == 0 && !z.negative);
+  assert (bignum_is_zero(&z) && !z.negative);
   bignum_dec(&x); // x = -2
   bignum_add(&x, &y, &z); // z = -1
   assert (z.array[0] == 1 && z.negative);
@@ -97,7 +97,7 @@ static void test_bignum_sign()
   assert (z.array[0] == 1 && !z.negative);
   bignum_dec(&y); // y = 1
   bignum_add(&x, &y, &z);
-  assert (z.array[0] == 0 && !z.negative);
+  assert (bignum_is_zero(&z) && !z.negative);
   bignum_dec(&y); // y = -2
   bignum_add(&x, &y, &z);
   assert (z.array[0] == 1 && z.negative);
@@ -138,19 +138,21 @@ static void test_bignum_bytes()
   assert (memcmp(bytes, output, sizeof bytes - 1) == 0);
 }
 
+char sabuf[8192];
+char sbbuf[8192];
+char scbuf[8192];
+char sdbuf[8192];
+char iabuf[8192];
+char ibbuf[8192];
+char icbuf[8192];
+char idbuf[8192];
+  
 int main()
 {
   test_bignum_bytes();
   test_bignum_sign();
 
-  char sabuf[8192];
-  char sbbuf[8192];
-  char scbuf[8192];
-  char sdbuf[8192];
-  char iabuf[8192];
-  char ibbuf[8192];
-  char icbuf[8192];
-  char idbuf[8192];
+
 
   struct bn sa, sb, sc, sd, se;
   struct bn ia, ib, ic, id;

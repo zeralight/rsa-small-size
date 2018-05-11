@@ -6,36 +6,45 @@
 #include "rsa.h"
 #include "util.h"
 
-/* O(log n) */
 static void pow_mod(struct bn* a, struct bn* b, struct bn* n, struct bn* res)
 {
-  bignum_from_int(res, 1); /* r = 1 */
-
   struct bn tmpa;
   struct bn tmpb;
   struct bn tmp;
-  bignum_assign(&tmpa, a);
-  bignum_assign(&tmpb, b);
 
-  while (1)
+  bignum_assign(&tmpb, b);
+  bignum_assign(&tmpa, a);
+
+  bignum_from_int(res, 1); /* r = 1 */
+
+
+  int it = 0;
+  while (tmpb.len > 0)
   {
-    /*  printf("Iteration:\n"); */
-    if (tmpb.array[0] & 1)     /* if (b % 2) */
+	  printf("Iteration %d\n", ++it);
+    if (tmpb.array[0] & 1)
     {
-      bignum_mul(res, &tmpa, &tmp);  /*   r = r * a % m */
-      bignum_mod(&tmp, n, res);
+      bignum_mul(res, &tmpa, res);
+      bignum_mod(res, n, res);
     }
-    bignum_rshift(&tmpb, &tmp, 1); /* b /= 2 */
-    bignum_assign(&tmpb, &tmp);
-    
-    if (bignum_is_zero(&tmpb)) {
-      break;
-    }
-    
-    bignum_mul(&tmpa, &tmpa, &tmp);
-    bignum_mod(&tmp, n, &tmpa);
+    bignum_mul(&tmpa, &tmpa, &tmpa);
+    bignum_mod(&tmpa, n, &tmpa);
+
+	/*
+	printf("tmpb: ");
+	print_arr(&tmpb);
+    */
+	
+	bignum_rshift(&tmpb, &tmp, 1);
+	/*
+	printf("tmp: ");
+	print_arr(&tmp);
+    */
+	bignum_assign(&tmpb, &tmp);
   }
+
 }
+
 
 #ifdef IMPLEMENT_ALL
 unsigned char* rsa_decrypt(const unsigned char* from,
@@ -98,6 +107,59 @@ unsigned char* rsa_encrypt(const unsigned char* from,
 }
 
 #ifdef RSA_MAIN
+static void test_rsa_1(void)
+{
+  /* Testing with very small and simple terms */
+  char buf[8192];
+  struct bn M, C, E, D, N;
+
+
+  const int p = 11;
+  const int q = 13;
+  const int n = p * q;
+//int t = (p - 1) * (q - 1);
+  const int e = 7;
+  const int d = 103;
+  const int m = 9;
+  const int c = 48;
+  int m_result, c_result;
+
+  bignum_init(&M);
+  bignum_init(&C);
+  bignum_init(&D);
+  bignum_init(&E);
+  bignum_init(&N);
+
+  bignum_from_int(&D, d);
+  bignum_from_int(&C, 48);
+  bignum_from_int(&N, n);
+
+  printf("\n");
+
+  printf("  Encrypting message m = %d \n", m);
+  printf("  %d ^ %d mod %d = %d ? \n", m, e, n, c);
+  bignum_from_int(&M, m);
+  bignum_from_int(&E, e);
+  bignum_from_int(&N, n);
+  pow_mod(&M, &E, &N, &C);
+  c_result = bignum_to_int(&C);
+  bignum_to_string(&C, buf, sizeof(buf));
+  printf("  %d ^ %d mod %d = %d \n", m, e, n, c_result);
+  printf("  %d ^ %d mod %d = 0x%s \n", m, e, n, buf);
+
+  printf("\n");
+
+  printf("  Decrypting message c = %d \n", c);
+  printf("  %d ^ %d mod %d = %d ? \n", c, d, n, m);
+  pow_mod(&C, &D, &N, &M);
+  m_result = bignum_to_int(&M);
+  bignum_to_string(&M, buf, sizeof(buf));
+  printf("  %d ^ %d mod %d = %d \n", c, d, n, m_result);
+  printf("  %d ^ %d mod %d = 0x%s \n", c, d, n, buf);
+
+  printf("\n");
+}
+
 static void test_rsa1024(void)
 {
   char public[]  = "a15f36fc7f8d188057fc51751962a5977118fa2ad4ced249c039ce36c8d1bd275273f1edd821892fa75680b1ae38749fff9268bf06b3c2af02bbdb52a0d05c2ae2384aa1002391c4b16b87caea8296cfd43757bb51373412e8fe5df2e56370505b692cf8d966e3f16bc62629874a0464a9710e4a0718637a68442e0eb1648ec5";
@@ -110,8 +172,8 @@ static void test_rsa1024(void)
   struct bn m; /* clear text message */
   struct bn c; /* cipher text */
 
-  char x[] = "e804b31918162222949cfc1c009a79b86d0444ca6dfb10754c1edc8b7c8edc7c5de9cb34a800418ba4f24dc9f5c3a10de9ff32cf09884820434b005dc71c0ab6771f0c2bfc51f132fd9cd13a4e6dec3a98bc9e2e6da42fd8ee9fe7f0966118cb4b2e12b20692ecf1db42f86e0617a9150970a00a151b8c529ac390d62fa3bfb4ffcd3e835388ea91b6c07554768776a0c201dfeb9c3ebc79e99061a2607abc668d183f76974f5fd8c73b3136d45d7a0a4d9cd7b08cdca1fb55996387455575576d45ecab832514067f7b5f540437b8c71ff4a40ddec785c0a512432dd590ed37e8f436627b3abe010cdc3f06b07961257a684cd1924abcd970d5329af78bd49e"; 
-  /*  int x = 54321; */
+  // char x[] = "e804b31918162222949cfc1c009a79b86d0444ca6dfb10754c1edc8b7c8edc7c5de9cb34a800418ba4f24dc9f5c3a10de9ff32cf09884820434b005dc71c0ab6771f0c2bfc51f132fd9cd13a4e6dec3a98bc9e2e6da42fd8ee9fe7f0966118cb4b2e12b20692ecf1db42f86e0617a9150970a00a151b8c529ac390d62fa3bfb4ffcd3e835388ea91b6c07554768776a0c201dfeb9c3ebc79e99061a2607abc668d183f76974f5fd8c73b3136d45d7a0a4d9cd7b08cdca1fb55996387455575576d45ecab832514067f7b5f540437b8c71ff4a40ddec785c0a512432dd590ed37e8f436627b3abe010cdc3f06b07961257a684cd1924abcd970d5329af78bd49e"; 
+  uint32_t x = 54321;
 
   bignum_init(&n);
   bignum_init(&d);
@@ -124,29 +186,19 @@ static void test_rsa1024(void)
   bignum_from_int(&e, 0x10001);
   bignum_init(&m);
   bignum_init(&c);
-
-  /* bignum_from_int(&m, x); */
-  bignum_from_string(&m, x, 512);
+  bignum_from_int(&m, x);
   bignum_to_string(&m, buf, sizeof(buf));
   printf("m = %s \n", buf);
 
-  printf("  Encrypting number x = %s \n", x);   fflush(stdout);
-  /* printf("  Encrypting number x = %d \n", x);   fflush(stdout); */
+
   pow_mod(&m, &e, &n, &c);
-  printf("  Done...\n\n"); fflush(stdout);
-
+  printf("Done.\n"); fflush(stdout);
   bignum_to_string(&c, buf, sizeof(buf));
-  printf("  Decrypting cipher text '");
-  printf("%s\n", buf); fflush(stdout);
-  
-  bignum_init(&m); 
+  printf("cipher: %s\n", buf);
 
-  pow_mod(&c, &d, &n, &m);
-  printf("  Done...\n\n"); fflush(stdout);
-
-
-  bignum_to_string(&m, buf, sizeof(buf));
-  printf("m = %s \n", buf);
+  char expected[] = "761196d33bc0c05b0ef197e145f5799bb72c8b5c2c13920de018808b7108ee5f95482bcf8cf51239d4652e608faa77b61e0398ed865ab43b54c950abc8a93edbf53e42c9cfe2ef696cd1c405e442540cc730c38a96474a5c288c0e872f95c304fe5243586dff35184a040813bb01115f20cbd640920737fd7afc725bc8d63d04";
+  require (memcmp(expected, buf, 128) == 0, "bad result");
+  printf("ok\n");
 }
 
 
@@ -188,20 +240,16 @@ static void test_rsa2048(void)
   printf("m = %s \n", buf);
 
   printf(" Encrypting number x = %s\n", x);
-  /* printf("  Encrypting number x = %d \n", x);   fflush(stdout); */
   pow_mod(&m, &e, &n, &c);
   printf("  Done...\n\n"); fflush(stdout);
 
   bignum_to_string(&c, buf, sizeof(buf));
-  printf("%s\n", buf); fflush(stdout);
+  printf("cipher: %s\n", buf); fflush(stdout);
 
-  bignum_init(&m); 
-
-  pow_mod(&c, &d, &n, &m);
-  printf("  Done...\n\n"); fflush(stdout);
-
-  bignum_to_string(&m, buf, sizeof(buf));
-  printf("m = %s \n", buf);
+  char expected[] = "4adb111223b800d1cf1420cb7cf2424d7d1a4acb5241946b3a74979a3902c658c62bf762ed7baf309f81654cf46154f8d6d6bebcd4a54def31bfec366d331107b47d5cb7b8c741453adc2e71e0f3fa685547ec51f9ba5885e287e428e2fdbdd7ca8fef5d820037d5d92917bea5ae32e28603f2064a78c9b434d56961fc476cce02b518704fcb4b6927063050a0f792555ded41da869a38d06410d004d9b833543f1cac9d520458c226fd13235cf5727ec422b092dad91cd711fbbedf93e4a0d5d40136d45e34c609a000423c36239d701a1d8011593f04680fc1ec4ee60c8ae5e6d835f24252b14cbd28b234c478c41e383f35c79b5211225cabc3d5450d6977";
+  
+  require (memcmp(expected, buf, 128) == 0, "bad result");
+  printf("ok\n");
 }
 
 static void another_test_rsa2048()
@@ -223,10 +271,10 @@ static void another_test_rsa2048()
   bignum_init(&d);
   bignum_init(&c);
 
-  bignum_from_string(&m, from, sizeof from - 1);
-  bignum_from_string(&n, rsa_n, sizeof rsa_n - 1);
-  bignum_from_string(&d, rsa_d, sizeof rsa_d - 1);
-  bignum_from_string(&e, rsa_e, sizeof rsa_e - 1);
+  bignum_from_string(&m, (char*)from,  sizeof from - 1);
+  bignum_from_string(&n, (char*)rsa_n, sizeof rsa_n - 1);
+  bignum_from_string(&d, (char*)rsa_d, sizeof rsa_d - 1);
+  bignum_from_string(&e, (char*)rsa_e, sizeof rsa_e - 1);
 
   pow_mod(&m, &e, &n, &c);
 
@@ -247,11 +295,13 @@ static void another_test_rsa2048()
 
 int main()
 {
-  /* test_rsa1024(); */
+  // test_rsa_1();
 
-  /* test_rsa2048(); */
+  test_rsa1024();
 
-  another_test_rsa2048();
+  // test_rsa2048();
+
+  // another_test_rsa2048();
 
   printf("\n");
 
