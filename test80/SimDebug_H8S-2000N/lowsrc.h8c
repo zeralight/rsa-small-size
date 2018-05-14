@@ -1,0 +1,10 @@
+-cpu=2000N
+-define=__H8_2329F__,NDEBUG
+-lang=c99
+-object="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\lowsrc.obj"
+-outcode=sjis
+-debug
+-nolist
+-chgincpath
+"C:\WorkSpace\test80\test80\lowsrc.c"
+-nologo

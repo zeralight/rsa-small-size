@@ -629,7 +629,7 @@ void bignum_mul_karatsuba(struct bn* a,
     bignum_mul_karatsuba(x0, y0, z2);
 
     bignum_add(z0, z2, t1);
-    assert (bignum_cmp(z1, z2) != SMALLER);
+    require (bignum_cmp(z1, z2) != SMALLER, "632: exception");
     bignum_sub(z1, t1, t2);
 
     bignum_lshift(z2, z1, 2*m2*WORD_SIZE*8);
@@ -1091,7 +1091,7 @@ static void _lshift_word(struct bn* a, int nwords)
     }
 
     int32_t i;
-    assert (a->len-1 + nwords < BN_ARRAY_SIZE);
+    require (a->len-1 + nwords < BN_ARRAY_SIZE, "1094: overflow");
     for ( i = a->len-1; i >= 0; --i)
         a->array[i+nwords] = a->array[i];
     memset(a->array, 0, WORD_SIZE*nwords);

@@ -1,6 +1,6 @@
 CC     := gcc
 MACROS := 
-CFLAGS := -I. -I./src -std=c99 -g -Wundef -Wall -Wextra -O3 $(MACROS)
+CFLAGS := -I. -I./src -std=c99 -Wundef -Wall -Wextra -O3 $(MACROS)
 
 pkcs_oaep:
 	$(CC) $(CFLAGS) src/util.c src/bn.c src/rsa.c src/sha1.c src/pkcs_oaep.c -o ./build/pkcs_oaep
@@ -11,7 +11,7 @@ sha1:
 load_cmp: 
 	$(CC) $(CFLAGS) -DIMPLEMENT_ALL -DBIGNUM_MAIN src/util.c src/bn.c ./tests/load_cmp.c    -o ./build/test_load_cmp
 factorial:
-	$(CC) $(CFLAGS) -DIMPLEMENT_ALL -DFACTORIAL_MAIN src/util.c src/bn.c ./tests/factorial.c   -o ./build/test_factorial
+	$(CC) $(CFLAGS) -DIMPLEMENT_ALL -DPROFILER -DFACTORIAL_MAIN src/util.c src/bn.c ./tests/factorial.c   -o ./build/test_factorial
 golden:
 	$(CC) $(CFLAGS) -DIMPLEMENT_ALL src/util.c src/bn.c ./tests/golden.c   -o ./build/golden
 

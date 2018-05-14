@@ -1,0 +1,54 @@
+Optimizing Linkage Editor (V.9.05.01.000)         14-May-2018 16:27:21
+
+*** Options ***
+
+-subcommand=C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\test80.hlk
+-noprelink
+-rom=D=R
+-nomessage
+-list="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\test80.map"
+-optimize=string_unify,symbol_delete
+-start=PResetPRG,PIntPRG/0400,P,C,C$DSEC,C$BSEC,R/0800,D,B/08000,S/0EBF0
+-nologo
+-compress
+-total_size
+-input="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\bn.obj"
+-input="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\dbsct.obj"
+-input="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\lowlvl.obj"
+-input="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\pkcs_oaep.obj"
+-input="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\resetprg.obj"
+-input="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\rsa.obj"
+-input="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\sha1.obj"
+-input="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\util.obj"
+-library="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\test80.lib"
+-output="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\test80.abs"
+-end
+
+*** Error information ***
+
+** L1100 (W) Cannot find "PIntPRG" specified in option "start"
+
+*** Mapping List ***
+
+SECTION                            START      END         SIZE   ALIGN
+
+$VECT0
+                                  00000000  00000001         2   0
+PResetPRG
+                                  00000400  00000413        14   2
+P
+                                  00000800  0000201d      181e   2
+C
+                                  0000201e  00002037        1a   2
+C$DSEC
+                                  00002038  0000203d         6   2
+C$BSEC
+                                  0000203e  00002041         4   2
+R
+                                  00002042  00002383       342   2
+D
+                                  00008000  00008341       342   2
+B
+                                  00008342  0000e355      6014   2
+S
+                                  0000ebf0  0000fbef      1000   2

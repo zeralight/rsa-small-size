@@ -297,9 +297,9 @@ int main()
 {
   // test_rsa_1();
 
-  test_rsa1024();
+  // test_rsa1024();
 
-  // test_rsa2048();
+  test_rsa2048();
 
   // another_test_rsa2048();
 

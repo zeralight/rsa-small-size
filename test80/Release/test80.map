@@ -1,0 +1,54 @@
+Optimizing Linkage Editor (V.9.05.01.000)         13-May-2018 14:34:20
+
+*** Options ***
+
+-subcommand=C:\WorkSpace\test80\test80\Release\test80.hlk
+-noprelink
+-nodebug
+-rom=D=R
+-nomessage
+-list="C:\WorkSpace\test80\test80\Release\test80.map"
+-optimize=string_unify,symbol_delete,register
+-start=PResetPRG,PIntPRG/0400,P,C,C$DSEC,C$BSEC,D/0800,B,R/08000,S/0F000
+-nologo
+-input="C:\WorkSpace\test80\test80\Release\bn.obj"
+-input="C:\WorkSpace\test80\test80\Release\dbsct.obj"
+-input="C:\WorkSpace\test80\test80\Release\lowlvl.obj"
+-input="C:\WorkSpace\test80\test80\Release\pkcs_oaep.obj"
+-input="C:\WorkSpace\test80\test80\Release\resetprg.obj"
+-input="C:\WorkSpace\test80\test80\Release\rsa.obj"
+-input="C:\WorkSpace\test80\test80\Release\sbrk.obj"
+-input="C:\WorkSpace\test80\test80\Release\sha1.obj"
+-input="C:\WorkSpace\test80\test80\Release\util.obj"
+-library="C:\WorkSpace\test80\test80\Release\test80.lib"
+-output="C:\WorkSpace\test80\test80\Release\test80.abs"
+-end
+
+*** Error information ***
+
+** L1100 (W) Cannot find "PIntPRG" specified in option "start"
+
+*** Mapping List ***
+
+SECTION                            START      END         SIZE   ALIGN
+
+$VECT0
+                                  00000000  00000001         2   0
+PResetPRG
+                                  00000400  00000413        14   2
+P
+                                  00000800  000022c9      1aca   2
+C
+                                  000022ca  000022e5        1c   2
+C$DSEC
+                                  000022e6  000022eb         6   2
+C$BSEC
+                                  000022ec  000022ef         4   2
+D
+                                  000022f0  00002539       24a   2
+B
+                                  00008000  0000c00f      4010   2
+R
+                                  0000c010  0000c259       24a   2
+S
+                                  0000f000  0000f1ff       200   2
