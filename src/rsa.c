@@ -6,8 +6,71 @@
 #include "rsa.h"
 #include "util.h"
 
+#define KARATSUBA_MEM 36
+
+#ifndef RSA_BIG_E
+static void pow_mod(struct bn* a, uint32_t b, struct bn* n, struct bn* res)
+{
+  const uint32_t mem = KARATSUBA_MEM * sizeof(struct bn);
+  
+  karatsuba_ctx.pool = heap_get(mem); // 40 (for len < 10), 60 (for len < 5)
+  karatsuba_ctx.idx = 0;
+  struct bn *tmp = heap_get(sizeof *tmp);
+  bignum_from_int(res, 1); /* r = 1 */
+
+#ifdef USE_IO
+  int it = 0;
+#endif
+  while (b) {
+#ifdef USE_IO
+	  printf("Iteration %d\n", ++it);
+#endif
+    if (b & 1) {
+      bignum_mul(res, a, tmp);
+      bignum_mod(tmp, n, res);
+    }
+    bignum_mul(a, a, tmp);
+    bignum_mod(tmp, n, a);
+
+    b >>= 1;
+  }
+
+  heap_free(mem + sizeof *tmp);
+}
+
+unsigned char* rsa_encrypt(const unsigned char* from, uint32_t flen,
+                          const unsigned char* _n, uint32_t nlen, uint32_t _e) {
+  
+  const uint32_t mem = 3 * sizeof(struct bn);
+  struct bn *pool = (struct bn*) heap_get(mem);
+  struct bn *n = pool,
+            *m = pool+1,
+            *c = pool+2;
+
+  bignum_from_bytes(m, from, flen);
+  bignum_from_bytes(n, _n, nlen);
+  
+  pow_mod(m, _e, n, c);
+
+  unsigned char* cipher = heap_get(RSA_KEYSIZE);
+#if !defined(BIG_ENDIAN) || !defined(__H8_2329F__)
+  bignum_to_bytes(c, cipher, RSA_KEYSIZE);
+#else
+  for (int i = 0; i < c->len; ++i)
+  	*(((DTYPE*)cipher)+c->len-i-1) = c->array[i];
+#endif
+
+  return cipher;
+}
+
+#else // RSA_BIG_E
+
 static void pow_mod(struct bn* a, struct bn* b, struct bn* n, struct bn* res)
 {
+  karatsuba_ctx.pool = NULL;
+
+  karatsuba_ctx.pool = heap_get(40 * sizeof(struct bn)); // 40 (for len < 10), 60 (for len < 5)
+  karatsuba_ctx.idx = 0;
   struct bn tmpa;
   struct bn tmpb;
   struct bn tmp;
@@ -18,10 +81,14 @@ static void pow_mod(struct bn* a, struct bn* b, struct bn* n, struct bn* res)
   bignum_from_int(res, 1); /* r = 1 */
 
 
+#ifdef USE_IO
   int it = 0;
+#endif
   while (tmpb.len > 0)
   {
-	  printf("Iteration %d\n", ++it);
+#ifdef USE_IO
+	  fprintf(stderr, "Iteration %d\n", ++it);
+#endif
     if (tmpb.array[0] & 1)
     {
       bignum_mul(res, &tmpa, res);
@@ -43,39 +110,8 @@ static void pow_mod(struct bn* a, struct bn* b, struct bn* n, struct bn* res)
 	bignum_assign(&tmpb, &tmp);
   }
 
+  heap_free(40 * sizeof(struct bn));
 }
-
-
-#ifdef IMPLEMENT_ALL
-unsigned char* rsa_decrypt(const unsigned char* from,
-                          uint32_t flen,
-                          const unsigned char* _n,
-                          uint32_t nlen,
-                          const unsigned char* _d,
-                          uint32_t dlen)
-{
-  struct bn n;
-  struct bn d;
-  struct bn m;
-  struct bn c;
-
-  bignum_init(&n);
-  bignum_init(&d);
-  bignum_init(&m);
-  bignum_init(&c);
-
-  bignum_from_bytes(&c, from, flen);
-  bignum_from_bytes(&n, _n, nlen);
-  bignum_from_bytes(&d, _d, dlen);
-
-  pow_mod(&c, &d, &n, &m);
-
-  unsigned char* decrypted = malloc(RSA_KEYSIZE);
-  bignum_to_bytes(&m, decrypted, RSA_KEYSIZE);
-
-  return decrypted;
-}
-#endif
 
 unsigned char* rsa_encrypt(const unsigned char* from, 
                           uint32_t flen,
@@ -100,13 +136,22 @@ unsigned char* rsa_encrypt(const unsigned char* from,
 
   pow_mod(&m, &e, &n, &c);
 
-  unsigned char* cipher = malloc(RSA_KEYSIZE);
+  unsigned char* cipher = heap_get(RSA_KEYSIZE);
+#if !defined(BIG_ENDIAN) || !defined(__H8_2329F__)
   bignum_to_bytes(&c, cipher, RSA_KEYSIZE);
+#else
+  for (int i = 0; i < c.len; ++i)
+  	*(((DTYPE*)cipher)+c.len-i-1) = c.array[i];
+#endif
 
   return cipher;
 }
 
-#ifdef RSA_MAIN
+#endif
+
+
+
+#ifdef RSA_MAIN // ------------------------------ TEST RSA ----------------------------------
 static void test_rsa_1(void)
 {
   /* Testing with very small and simple terms */

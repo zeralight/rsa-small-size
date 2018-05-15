@@ -11,10 +11,4 @@ unsigned char* rsa_encrypt(const unsigned char* from,
                             uint32_t nlen,
                             uint32_t e);
 
-unsigned char* rsa_decrypt(const unsigned char* from,
-                            uint32_t flen,
-                            const unsigned char* n,
-                            uint32_t nlen,
-                            const unsigned char* d,
-                            uint32_t dlen);
 #endif

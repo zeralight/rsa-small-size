@@ -1,20 +1,27 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
+// #include <string.h>
 
 #include "sha1.h"
 #include "util.h"
 
-static uint8_t block[64], extra_block[64];
-uint32_t H[5] =
+
+static uint8_t *p;
+static uint32_t *H;
+
+void sha1_start()
 {
-  0x67452301,
-  0xEFCDAB89,
-  0x98BADCFE,
-  0x10325476,
-  0xC3D2E1F0
-};
+  p = heap_get(128);
+  H = heap_get(sizeof *H * 5);
+}
+
+void sha1_terminate()
+{
+  heap_free(128);
+  heap_free(sizeof *H * 5);
+}
+
 
 static void sha1_init()
 { 
@@ -147,11 +154,12 @@ void doSha1(uint8_t * block)
 
 int sha1(const unsigned char* input, uint32_t len, unsigned char* output)
 {
+  uint8_t *block = p, *extra_block = p+64;
+
   sha1_init();
 
   uint32_t i = 0;
-  while (i+64 < len)
-  {
+  while (i+64 < len) {
     memcpy(block, input+i, 64);
     doSha1(block);
     i += 64;
@@ -161,21 +169,20 @@ int sha1(const unsigned char* input, uint32_t len, unsigned char* output)
     memcpy(block, input+i, len-i);
     done = len-i;
   }
-  uint32_t j;
-  for (j = done; j < 64; ++j)
+  for (uint8_t j = done; j < 64; ++j)
     block[j] = extra_block[j] = 0x00;
   int twoBlocks = pad(block, extra_block, done, len);
   doSha1(block);
   if(twoBlocks == 1)
-  {
     doSha1(extra_block);
-  }
-  memset(output, 0, 20);
+  
+#ifdef BIG_ENDIAN
+  memcpy(output, H, 20);
+#else
   for (i = 0; i < 5; ++i)
-  {
     i2osp(output+4*i, H+i, 4);
-    /* memcpy(output+4*i, &x, 4); */
-  }
+#endif
+
   return 0;
 }
 
@@ -186,13 +193,13 @@ int sha1_uint8_t(const uint8_t* input, uint32_t len, uint8_t* output)
 
 uint8_t* sha1_with_malloc(const unsigned char* input, uint32_t len)
 {
-  uint8_t* output = malloc(SHA1_HASH_LEN);
+  uint8_t* output = heap_get(SHA1_HASH_LEN);
   if (sha1(input, len, output) != 0) return NULL;
   return output;
 }
 uint8_t* sha1_uint8_t_with_malloc(const uint8_t* input, uint32_t len)
 {
-  uint8_t* output = malloc(SHA1_HASH_LEN);
+  uint8_t* output = heap_get(SHA1_HASH_LEN);
   if (sha1_uint8_t(input, len, output) != 0) return NULL;
   return output;
 }
@@ -201,6 +208,8 @@ uint8_t* sha1_uint8_t_with_malloc(const uint8_t* input, uint32_t len)
 #ifdef SHA1_MAIN
 int main()
 {
+  sha1_start();
+
   unsigned char input[] = "I wonder if it will work";
   unsigned char input2[] = "";
   unsigned char input3[] = "Hello word";
@@ -232,6 +241,8 @@ int main()
   memcpy(expected_output_hex, "f8036ad391e0b6057d39ab1a881f4ab3e7a65c51", 40);
   unhexlify(expected_output_hex, 40, expected_output);
   require (memcmp(output, expected_output, 20) == 0, "invalid hash");
+
+  sha1_terminate();
 
   printf("OK\n");
 }

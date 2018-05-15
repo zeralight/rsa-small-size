@@ -4,8 +4,9 @@
 -nomessage
 -list="C:\WorkSpace\test80\test80\Release\test80.map"
 -optimize=string_unify,symbol_delete,register
--start=PResetPRG,PIntPRG/0400,P,C,C$DSEC,C$BSEC,D/0800,B,R/08000,S/0F000
+-start=PResetPRG,PIntPRG/0400,P,C,C$DSEC,C$BSEC,D/0800,B,R/03000,S/0EBF0
 -nologo
+-total_size
 -input="C:\WorkSpace\test80\test80\Release\bn.obj"
 -input="C:\WorkSpace\test80\test80\Release\dbsct.obj"
 -input="C:\WorkSpace\test80\test80\Release\lowlvl.obj"

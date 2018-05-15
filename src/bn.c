@@ -1,26 +1,5 @@
-/*
 
-   Big number library - arithmetic on multiple-precision unsigned integers.
-
-   This library is an implementation of arithmetic on arbitrarily large integers.
-
-   The difference between this and other implementations, is that the data structure
-   has optimal memory utilization (i.e. a 1024 bit integer takes up 128 bytes RAM),
-   and all memory is allocated statically: no dynamic allocation for better or worse.
-
-   Primary goals are correctness, clarity of code and clean, portable implementation.
-   Secondary goal is a memory footprint small enough to make it suitable for use in
-   embedded applications.
-
-
-   The current state is correct functionality and adequate performance.
-   There may well be room for performance-optimizations and improvements.
-
- */
-
-#include <stdio.h>
 #include <stdbool.h>
-#include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -30,19 +9,18 @@
 
 
 
+struct karatsuba_ctx karatsuba_ctx;
+
+
 /* Functions for shifting number in-place. */
 static void _lshift_one_bit(struct bn* a);
 static void _rshift_one_bit(struct bn* a);
 static void _lshift_word(struct bn* a, int nwords);
 static void _rshift_word(struct bn* a, int nwords);
-static void bignum_add_unsigned(struct bn* a, struct bn* b, struct bn* c);
-static void bignum_sub_unsigned(struct bn* a, struct bn* b, struct bn* c);
 #ifdef IMPLEMENT_ALL
 static void bignum_dec_unsigned(struct bn* a);
 static void bignum_inc_unsigned(struct bn* a);
 #endif
-static int bignum_cmp_unsigned(struct bn* a, struct bn* b);
-static uint16_t bignum_len(const struct bn* a);
 void print_arr(const struct bn*);
 
 /* Public / Exported functions. */
@@ -50,8 +28,6 @@ void bignum_init(struct bn* n)
 {
     require(n, "n is null");
 
-    // memset(n->array, 0, BN_ARRAY_SIZE*WORD_SIZE);
-    n->negative = false;
     n->len = 0;
 }
 
@@ -180,12 +156,12 @@ void bignum_to_string(struct bn* n, char* str, int nbytes)
 }
 #endif
 
-void  bignum_to_bytes(const struct bn* n, unsigned char* bytes, uint32_t nbytes)
+#if !defined(BIG_ENDIAN) || !defined(__H8_2329F__)
+void bignum_to_bytes(const struct bn* n, unsigned char* bytes, uint32_t nbytes)
 {
     require(n, "n is null");
     require(bytes, "str is null");
     require(nbytes > 0, "nbytes must be positive");
-    require(!n->negative, "only unsigned numbers supported");
 
     memset(bytes, 0, nbytes);
     
@@ -195,13 +171,12 @@ void  bignum_to_bytes(const struct bn* n, unsigned char* bytes, uint32_t nbytes)
     */
     uint32_t i = n->len;
     uint32_t internal_len = i*WORD_SIZE;
-    unsigned char* internal = malloc(internal_len);
+    unsigned char* internal = heap_get(internal_len);
     uint32_t j = 0;
     for (; i--; ++j) {
         DTYPE d;
         i2osp(&d, n->array+i, WORD_SIZE);
         memcpy(internal+j*WORD_SIZE, &d, WORD_SIZE);
-        memcpy(&d, internal+j*WORD_SIZE, WORD_SIZE);
     }
 
     //require (nbytes <= internal_len, "not enough space");
@@ -210,8 +185,9 @@ void  bignum_to_bytes(const struct bn* n, unsigned char* bytes, uint32_t nbytes)
     else
         memcpy(bytes, internal, internal_len);
         
-    free(internal);
+    heap_free(internal_len);
 }
+#endif
 
 void bignum_from_bytes(struct bn* n, const unsigned char* bytes, uint32_t nbytes)
 {
@@ -335,17 +311,11 @@ void bignum_dec(struct bn* n)
 
 #endif
 
-static void bignum_add_unsigned(struct bn* a, struct bn* b, struct bn* c)
+void bignum_add(struct bn* a, struct bn* b, struct bn* c)
 {
     require(a, "a is null");
     require(b, "b is null");
     require(c, "c is null");
-
-    /*
-    printf("bignum_add_unsigned:\n");
-    printf("a: "); print_arr(a);
-    printf("b: "); print_arr(b);
-    */
 
     DTYPE_TMP tmp;
     int carry = 0;
@@ -356,27 +326,21 @@ static void bignum_add_unsigned(struct bn* a, struct bn* b, struct bn* c)
         memset(b->array+b->len, 0, WORD_SIZE*(maxlen - b->len));
     for (uint16_t i = 0; i < maxlen; ++i)
     {
-        // printf("a[%d] = %d | b[%d] = %d\n", i, a->array[i], i, b->array[i]);
         tmp = ((DTYPE_TMP)a->array[i]) + b->array[i] + carry;
-        // printf("tmp = %d\n", tmp);
         carry = (tmp > MAX_VAL);
-        // printf("carry = %d\n", carry);
         c->array[i] = (tmp & MAX_VAL);
     }
     c->array[maxlen] = carry;
     c->len = maxlen + (carry != 0);
 
-    // printf("c: "); print_arr(c);
-
 }
 
 
-static void bignum_sub_unsigned(struct bn* a, struct bn* b, struct bn* c)
+void bignum_sub(struct bn* a, struct bn* b, struct bn* c)
 {
     require(a, "a is null");
     require(b, "b is null");
     require(c, "c is null");
-    require (bignum_cmp_unsigned(a, b) != SMALLER, "not implemented");
 
     if (a->len < 1)
     {
@@ -409,110 +373,17 @@ static void bignum_sub_unsigned(struct bn* a, struct bn* b, struct bn* c)
 }
 
 
-void bignum_add(struct bn* a, struct bn* b, struct bn* c)
-{
-    require(a, "a is null");
-    require(b, "b is null");
-    require(c, "c is null");
 
-    /*
-    printf("bignum_add:\n");
-    printf("a = ");
-    for (int i = 0; i < a->len; ++i)
-        printf("%4x ", a->array[i]);
-    printf("len = %d | negative = %d\n", a->len, a->negative);
-    printf("\nb = ");
-    for (int i = 0; i < b->len; ++i)
-        printf("%4x ", b->array[i]);
-    printf("len = %d | negative = %d\n", b->len, b->negative);
-    */
-    if (a->negative == b->negative)
-    {
-        bignum_add_unsigned(a, b, c);
-        c->negative = a->negative;
-    }
-    else
-    {       
-        int cmp = bignum_cmp_unsigned(a, b);
-        if (cmp > 0)
-        {
-            bignum_sub_unsigned(a, b, c);
-            c->negative = a->negative;
-        }
-        else if (cmp < 0)
-        {
-            bignum_sub_unsigned(b, a, c);
-            c->negative = b->negative;
-        }
-        else
-        {
-            bignum_init(c);
-        }
-    }
-    /*
-    printf("bignum_add: c = ");
-    for (int i = 0; i < c->len; ++i)
-        printf("%4x ", c->array[i]);
-    printf("len = %d | negative = %d\n", c->len, c->negative);
-    */
-}
-
-void bignum_sub(struct bn* a, struct bn* b, struct bn* c)
-{
-    require(a, "a is null");
-    require(b, "b is null");
-    require(c, "c is null");
-
-    if (a->negative != b->negative)
-    {
-        bignum_add_unsigned(a, b, c);
-        c->negative = a->negative;
-    }
-    else
-    {
-        int cmp = bignum_cmp_unsigned(a, b);
-        if (cmp > 0)
-        {
-            bignum_sub_unsigned(a, b, c);
-            c->negative = a->negative;
-        }
-        else if (cmp < 0)
-        {
-            bignum_sub_unsigned(b, a, c);
-            c->negative = !b->negative;
-        }
-        else
-        {
-            bignum_init(c);
-        }
-    }
-}
-
-void bignum_mul_naive(struct bn* a,
-                        struct bn* b,
-                        struct bn* c)
-{
+void bignum_mul_naive(struct bn* a, struct bn* b, struct bn* c) {
     require(a, "a is null");
     require(b, "b is null");
     require(c, "c is null");
     
-    /*
-    printf("bignum_mul_naive:\n");
-    printf("a: "); print_arr(a);
-    printf("b: "); print_arr(b);
-    */
+
     struct bn row;
     struct bn tmp;
     int i, j;
 
-    bool asign = a->negative;
-    bool bsign = b->negative;
-    if (asign != bsign)
-    {
-        printf("Detected negaitve multiplication\n");
-        fflush(stdout);
-    }
-    a->negative = b->negative = false;
     bignum_init(c);
 
     for (i = 0; i < a->len; ++i)
@@ -522,28 +393,13 @@ void bignum_mul_naive(struct bn* a,
         for (j = 0; j < b->len; ++j)
         {
             bignum_init(&tmp);
-            // printf("i = %d | a[i] = %d | j = %d | b[j] = %d\n", i, a->array[i], j, b->array[j]);
             DTYPE_TMP intermediate = ((DTYPE_TMP)a->array[i] * (DTYPE_TMP)b->array[j]);
-            // printf("intermediate = %d\n", intermediate);
             bignum_from_int(&tmp, intermediate);
             _lshift_word(&tmp, i + j);
             bignum_add(&tmp, &row, &row);
         }
         bignum_add(c, &row, c);
-
     }
-    c->negative = asign != bsign;
-    a->negative = asign;
-    b->negative = bsign;
-     // printf ("bignum_mul_naive end:\nc: "); print_arr(c);
-}
-
-inline static uint16_t bignum_len(const struct bn* n)
-{
-    require (n, "invalid parameter");
-    return n->len;
-
-    return 0;
 }
 
 static void bignum_split_at(const struct bn* a,
@@ -551,52 +407,31 @@ static void bignum_split_at(const struct bn* a,
                             struct bn* lo,
                             struct bn* hi)
 {
-    uint16_t alen = bignum_len(a);
+    uint16_t alen = a->len;
     uint16_t lo_len = (alen < k) ? alen : k;
     uint16_t i;
     for (i = 0; i < lo_len; ++i)
         lo->array[i] = a->array[i];
     lo->len = lo_len;
-    lo->negative = false;
 
     for (; i < alen; ++i)
         hi->array[i-lo_len] = a->array[i];
     hi->len = alen - lo_len;
-    hi->negative = false;
 }
 
-void bignum_mul(struct bn* a,
-                struct bn* b,
-                struct bn* c)
-{
-    require (a && b, "invalid input");
-    require (!(a->negative || b->negative), "not implemented");
-    struct bn bb, ba;
-    bignum_assign(&bb, b);
-    bignum_assign(&ba, a);
-    a = &ba;
-    b = &bb;
-#ifdef NAIVE_MUL
-    bignum_mul_naive(a, b, c);
-#else
-    bignum_mul_karatsuba(a, b, c);
-#endif
-}
-void bignum_mul_karatsuba(struct bn* a,
-                        struct bn* b,
-                        struct bn* c)
-{
-    
-    uint16_t alen = bignum_len(a), blen = bignum_len(b);
-    if (alen <= 10 || blen <= 10) {
+void bignum_mul_karatsuba(struct bn* a, struct bn* b, struct bn* c) {
+    uint16_t alen = a->len, blen = b->len;
+    if (alen < 10 || blen < 10) {
         bignum_mul_naive(a, b, c);
         return;
     }
 
     uint16_t m = (alen > blen) ? alen : blen;
     uint16_t m2 = (m/2) + (m%2);
+	
+    struct bn *pool = karatsuba_ctx.pool + karatsuba_ctx.idx;
+    karatsuba_ctx.idx += 9;
 
-    struct bn *pool = malloc(sizeof *pool * 9);
     struct bn   *x1 = pool,
                 *x0 = pool+1,
                 *y1 = pool+2,
@@ -607,12 +442,10 @@ void bignum_mul_karatsuba(struct bn* a,
                 *t1 = pool+7,
                 *t2 = pool+8;
 
+	
     for (uint8_t i = 0; i < 9; ++i)
         bignum_init(pool+i);
-    
-    struct bn another_c;
-    bignum_mul_naive(a, b, &another_c);
-
+        
     // printf("a = "); print_arr(a);
     bignum_split_at(a, m2, x1, x0);
 
@@ -629,7 +462,7 @@ void bignum_mul_karatsuba(struct bn* a,
     bignum_mul_karatsuba(x0, y0, z2);
 
     bignum_add(z0, z2, t1);
-    require (bignum_cmp(z1, z2) != SMALLER, "632: exception");
+    require (bignum_cmp(z1, t1) != SMALLER, "632: exception");
     bignum_sub(z1, t1, t2);
 
     bignum_lshift(z2, z1, 2*m2*WORD_SIZE*8);
@@ -638,7 +471,7 @@ void bignum_mul_karatsuba(struct bn* a,
     bignum_add(z0, z1, z0);
     bignum_assign(c, z0);
 
-    free(pool);
+    karatsuba_ctx.idx -= 9;
 }
 
 void bignum_div(struct bn* a, struct bn* b, struct bn* c)
@@ -646,103 +479,44 @@ void bignum_div(struct bn* a, struct bn* b, struct bn* c)
     require(a, "a is null");
     require(b, "b is null");
     require(c, "c is null");
-    require (!(a->negative && b->negative), "not implemented");
     require (b->len > 0, "division by zero");
-
-    struct bn current;
-    struct bn denom;
-    struct bn tmp;
-
-    bignum_from_int(&current, 1);               /*  int current = 1; */
-    bignum_assign(&denom, b);                   /*  denom = b */
-    bignum_assign(&tmp, a);                     /*  tmp   = a */
-
-    /*
-    printf("bignum_div: \n");
-    printf("a: "); print_arr(a);
-    printf("b: "); print_arr(b);
-    */
-
-    const DTYPE_TMP half_max = 1 + (DTYPE_TMP)(MAX_VAL / 2);
-    bool overflow = false;
     
-    while (bignum_cmp(&denom, a) != LARGER)     /*  while (denom <= a) { */
-    {
-        /*
-        printf("bignum_div: \n");
-        printf("denom: "); print_arr(&denom);
-        printf("a: "); print_arr(a);
-        */
-        if (denom.len == BN_ARRAY_SIZE && denom.array[BN_ARRAY_SIZE - 1] >= half_max)
-        {
-            overflow = true;
-            break;
-        }
-        // printf("    current before Lshift: "); print_arr(&current);
-        _lshift_one_bit(&current);                /*    current <<= 1; */
-        // printf("    current after Lshift: "); print_arr(&current);
-        // printf("    denom before Lshift: "); print_arr(&denom);
-        _lshift_one_bit(&denom);                  /*    denom <<= 1; */
-        // printf("    denom after Lshift: "); print_arr(&denom);
-    }
-
+    struct bn *pool = heap_get(3 * sizeof(struct bn));
+    struct bn *current = pool;
+    struct bn *denom = pool+1;
+    struct bn *tmp = pool+2;
     
-    if (!overflow)
+    bignum_from_int(current, 1);               /*  int current = 1; */
+    bignum_assign(denom, b);                   /*  denom = b */
+    bignum_assign(tmp, a);                     /*  tmp   = a */
+    
+    while (bignum_cmp(denom, a) != LARGER)     /*  while (denom <= a) { */
     {
-        // printf("denom before Rshift: "); print_arr(&denom);
-        _rshift_one_bit(&denom);                  
-        // printf("denom After Rshift: "); print_arr(&denom);
-        // printf("current before Rshift: "); print_arr(&current);
-        _rshift_one_bit(&current);                
-        // printf("current AFTER Rshift: "); print_arr(&current);
+        require (!(denom->len == BN_ARRAY_SIZE && denom->array[BN_ARRAY_SIZE - 1] >= 1 + (DTYPE_TMP)(MAX_VAL / 2)), "division overflow");
+
+        _lshift_one_bit(current);                /*    current <<= 1; */
+        _lshift_one_bit(denom);                  /*    denom <<= 1; */
     }
+    _rshift_one_bit(denom);                  
+    _rshift_one_bit(current);                
+
     bignum_init(c);                             /*  int answer = 0; */
 
-    while (!bignum_is_zero(&current))           /*  while (current != 0) */
+    while (!bignum_is_zero(current))           /*  while (current != 0) */
     {
-        // printf("    while bignum_is_zero(&current):\n");
-        if (bignum_cmp(&tmp, &denom) != SMALLER)  /*    if (dividend >= denom) */
+        if (bignum_cmp(tmp, denom) != SMALLER)  /*    if (dividend >= denom) */
         {
-            /*
-            printf("        bignum_cmp before sub:\n");
-            
-            printf("        tmp: "); print_arr(&tmp);
-            printf("        denom: "); print_arr(&denom);
-            */
-            bignum_sub(&tmp, &denom, &tmp);         /*      dividend -= denom; */
-            /*
-            printf("        after sub\n");
-            printf("        tmp: "); print_arr(&tmp);
-            printf("        before or:\n");
-            printf("        c: "); print_arr(c);
-            printf("        current: "); print_arr(&current);
-            */
-            bignum_or(c, &current, c);              /*      answer |= current; */
-            /*
-            printf("        after or\n");
-            printf("        c: "); print_arr(c);
-            */
+            bignum_sub(tmp, denom, tmp);         /*      dividend -= denom; */
+            bignum_or(c, current, c);              /*      answer |= current; */
         }
-        /*
-        printf("    before Rshift:\n");
-        printf("    current: "); print_arr(&current);
-        printf("    denom: "); print_arr(&denom);
-        */
-        _rshift_one_bit(&current);
-        _rshift_one_bit(&denom);
-        /*
-        printf("    after Rshift:\n");
-        printf("    current: "); print_arr(&current);
-        printf("    denom: "); print_arr(&denom);
-        */
-    }                                           /*  return answer; */
+        _rshift_one_bit(current);
+        _rshift_one_bit(denom);
+    }                                            /*  return answer; */
     int16_t i;
     for (i = c->len-1; i >= 0 && c->array[i] == 0; --i);
     c->len = i+1;
-    /*
-    printf("bignum_div: end:\n");
-    printf("c = "); print_arr(c);
-    */
+    
+    heap_free(3 * sizeof(struct bn));
 }
 
 void bignum_lshift(struct bn* a, struct bn* b, int nbits)
@@ -771,12 +545,7 @@ void bignum_lshift(struct bn* a, struct bn* b, int nbits)
     {
         a->array[a->len] = 0;
         for (int16_t i = a->len; i > 0; --i)
-        {
             a->array[i] = (a->array[i] << nbits) | (a->array[i - 1] >> ((8 * WORD_SIZE) - nbits));
-            if(a->array[a->len] > 0) {
-                printf("ggggg\n");
-            }
-        }
         a->array[0] <<= nbits;
         if (a->array[a->len] > 0)
             ++a->len;
@@ -829,24 +598,18 @@ void bignum_mod(struct bn* a, struct bn* b, struct bn* c)
     require(a, "a is null");
     require(b, "b is null");
     require(c, "c is null");
-    require (!(a->negative && b->negative), "not implemented");
 
-    struct bn bb;
-    struct bn ba;
-    bignum_assign(&bb, b);
-    bignum_assign(&ba, a);
-
-    a = &ba;
-    b = &bb;
-
-    struct bn tmp;
+    struct bn *tmp = heap_get(sizeof *tmp);
 
     /* c = (a / b) */
     bignum_div(a, b, c);
+
     /* tmp = (c * b) */
-    bignum_mul(c, b, &tmp);
+    bignum_mul(c, b, tmp);
     /* c = a - tmp */
-    bignum_sub(a, &tmp, c);
+    bignum_sub(a, tmp, c);
+
+    heap_free(sizeof *tmp);
 }
 
 
@@ -892,7 +655,6 @@ void bignum_or(struct bn* a, struct bn* b, struct bn* c)
     require(a, "a is null");
     require(b, "b is null");
     require(c, "c is null");
-    require (!(a->negative && b->negative), "not implemented");
 
     struct bn *max, *min;
     if (a->len > b->len)
@@ -957,7 +719,7 @@ void bignum_xor(struct bn* a, struct bn* b, struct bn* c)
 
 #endif
 
-static int bignum_cmp_unsigned(struct bn* a, struct bn* b)
+int bignum_cmp(struct bn* a, struct bn* b)
 {
     require(a, "a is null");
     require(b, "b is null");
@@ -973,25 +735,15 @@ static int bignum_cmp_unsigned(struct bn* a, struct bn* b)
     return EQUAL;
 }
 
-int bignum_cmp(struct bn* a, struct bn* b)
-{
-    if (a->negative != b->negative)
-    {
-        if (a->negative) return -1;
-        return 1;
-    }
 
-    int s = bignum_cmp_unsigned(a, b);
-    if (a->negative) return -s;
-    return s;
-}
-
+/*
 inline int bignum_is_zero(struct bn* n)
 {
     require(n, "n is null");
 
     return (n->len == 0);
 }
+*/
 
 #ifdef IMPLEMENT_ALL
 void bignum_pow(struct bn* a, struct bn* b, struct bn* c)
@@ -1047,9 +799,7 @@ void bignum_assign(struct bn* dst, const struct bn* src)
     require(dst, "dst is null");
     require(src, "src is null");
 
-    memcpy(dst, src, BN_ARRAY_SIZE * WORD_SIZE);
-    dst->negative = src->negative;
-    dst->len = src->len;
+    memcpy(dst, src, sizeof *dst);
 }
 
 
@@ -1107,16 +857,21 @@ static void _lshift_one_bit(struct bn* a)
     require(a, "a is null");
 
     if (bignum_is_zero(a)) return;
+    
+    
+    DTYPE f = a->array[a->len-1];
+    require (!(a->len == 256 && ((MAX_VAL >> 1) < f)), "this shouldn't not happen");
 
-    a->array[a->len] = 0;
-    int i;
-    for (i = (int)a->len; i > 0; --i)
-    {
+    for (int i = (int)a->len-1; i > 0; --i)
         a->array[i] = (a->array[i] << 1) | (a->array[i - 1] >> ((8 * WORD_SIZE) - 1));
-    }
+
     a->array[0] <<= 1;
-    if (a->array[a->len] > 0)
-        ++a->len;
+    
+    if (a->len < BN_ARRAY_SIZE) {
+        a->array[a->len] = (f >> ((8 * WORD_SIZE) - 1));
+        if (a->array[a->len] > 0)
+            ++a->len;
+    }
 }
 
 
@@ -1136,7 +891,7 @@ static void _rshift_one_bit(struct bn* a)
         --a->len;
 }
 
-#ifdef IMPLEMENT_ALL
+#if defined(USE_IO) || !defined(__H8_2329F__)
 void print_arr(const struct bn* a)
 {
     if (a->len == 0) {
@@ -1145,6 +900,6 @@ void print_arr(const struct bn* a)
     for (int i = 0; i < a->len; ++i)
         printf("%.4x ", a->array[i]);
     }
-    printf("len = %d | negative = %d\n", a->len, a->negative);
+    printf("len = %d\n", a->len);
 }
 #endif

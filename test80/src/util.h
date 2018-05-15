@@ -25,7 +25,7 @@
 
 
 //#define HEAP_SIZE 0x51a0
-#define HEAP_SIZE 0x6000 // 43	 * 516  + 256
+#define HEAP_SIZE 0x5958 // 44*514 + 256
 
 struct heap {
 	char *buf, *brk;

@@ -86,13 +86,17 @@ unsigned char* mgf(unsigned char* mgfSeed, uint32_t mlen, uint32_t maskLen)
   uint32_t i = 0;
   for (; i < (maskLen + SHA1_HASH_LEN - 1) / SHA1_HASH_LEN; ++i)
   {
-    uint8_t temp[4];
+	memcpy(C, mgfSeed, mlen);
+#ifndef BIG_ENDIAN    
+	uint8_t temp[4];
     temp[0] = (uint8_t) ((i >> 24) & 255);
     temp[1] = (uint8_t) ((i >> 16) & 255);
     temp[2] = (uint8_t) ((i >> 8) & 255);
     temp[3] = (uint8_t) (i & 255);
-    memcpy(C, mgfSeed, mlen);
     memcpy(C+mlen, temp, 4);
+#else
+	memcpy(C+mlen, &i, 4);
+#endif
     sha1(C, mlen + 4, hash_temp);
     memcpy(T + i*SHA1_HASH_LEN, hash_temp, SHA1_HASH_LEN);
   }
@@ -104,11 +108,7 @@ unsigned char* mgf(unsigned char* mgfSeed, uint32_t mlen, uint32_t maskLen)
   {
     ret = heap_get(maskLen);
     memcpy(ret, T, maskLen);
-    heap_free(len * SHA1_HASH_LEN);
   }
-
-  heap_free(mlen + 4 + SHA1_HASH_LEN);
-
   return ret;
 }
 
@@ -169,7 +169,7 @@ unsigned char* pkcs_oaep_encode(const unsigned char* message, uint32_t mLen)
   memcpy(em+1, maskedSeed, hLen);
   memcpy(em+1+hLen, maskedDb, dbLen);
 
-  heap_free(heap.brk-brk_start);
+  heap_free(heap.brk-brk_start-256);
   
   /*  Step 3a, 3b, 3c */
   //unsigned char* m = pkcs_rsa_encrypt(em, 1 + hLen + dbLen, n, nlen, e);
@@ -178,11 +178,12 @@ unsigned char* pkcs_oaep_encode(const unsigned char* message, uint32_t mLen)
   return em;
 }
 
-unsigned char n_hex[] = "f4f8fac0c1822f90c1ff35b817efa46256b70d77e12982653a375986e4512643de269599b2d10b660287bea5a73e768ae488a0d7d38abefecca5f65968be6acaa24453db4614bf7a185bbfd5730b5770944949288677701028ad644c234fff852b0c453651947be3a35a34a07d2736f83c9f126f50d77020cfc37f917995da89a9f561340661fcaf1a3324ac03adf960e242e648dfb9b7ca8bc7cdd18c75a00c202123a9032990859deee8de17457d5f71eb435b18276f82f7d65d6af966b9f33f93fd0714b8b311904daba68866b592762a47c6b7f6dc909a3123149b01b1c721fffa907b877784621ac8ec0aa3fe4f185636890a0fd327d8fde0a389adb4b1";
+// unsigned char n_hex[] = "f4f8fac0c1822f90c1ff35b817efa46256b70d77e12982653a375986e4512643de269599b2d10b660287bea5a73e768ae488a0d7d38abefecca5f65968be6acaa24453db4614bf7a185bbfd5730b5770944949288677701028ad644c234fff852b0c453651947be3a35a34a07d2736f83c9f126f50d77020cfc37f917995da89a9f561340661fcaf1a3324ac03adf960e242e648dfb9b7ca8bc7cdd18c75a00c202123a9032990859deee8de17457d5f71eb435b18276f82f7d65d6af966b9f33f93fd0714b8b311904daba68866b592762a47c6b7f6dc909a3123149b01b1c721fffa907b877784621ac8ec0aa3fe4f185636890a0fd327d8fde0a389adb4b1";
   
 // public key, unhexlify it first.
 //unsigned char n_hex[] = "f4f8fac0c1822f90c1ff35b817efa46256b70d77e12982653a375986e4512643de269599b2d10b660287bea5a73e768ae488a0d7d38abefecca5f65968be6acaa24453db4614bf7a185bbfd5730b5770944949288677701028ad644c234fff852b0c453651947be3a35a34a07d2736f83c9f126f50d77020cfc37f917995da89a9f561340661fcaf1a3324ac03adf960e242e648dfb9b7ca8bc7cdd18c75a00c202123a9032990859deee8de17457d5f71eb435b18276f82f7d65d6af966b9f33f93fd0714b8b311904daba68866b592762a47c6b7f6dc909a3123149b01b1c721fffa907b877784621ac8ec0aa3fe4f185636890a0fd327d8fde0a389adb4b1";
-/*
+
+
 unsigned char n[] = {
 	0xf4, 0xf8, 0xfa, 0xc0, 0xc1, 0x82, 0x2f, 0x90,
 	0xc1, 0xff, 0x35, 0xb8, 0x17, 0xef, 0xa4, 0x62,
@@ -218,7 +219,7 @@ unsigned char n[] = {
 	0xd8, 0xfd, 0xe0, 0xa3, 0x89, 0xad, 0xb4, 0xb1
 };
 uint32_t e = 0x10001;
-*/
+
 
 int main()
 {
@@ -230,11 +231,6 @@ int main()
   }
 
   unsigned char input[] = "I wonder if it will work";
-  /*  unsigned char d_hex[] = "40286523ce8a5602c78c1b79976b3fd63177c7a339e9312969d1cd34b2df3df2506032960a6b0d5d2e14772dd35b5c988bb9ecc619b520c882b884886e1250cdb929c3fc8da22973c4a562dc7840e429abec75a8936efc7e7ee8ca77d657c148133a27764e6f60f30179428735bfeb79a006d941261f0652d19715f5f7adf389cf36e879c2990e1da0ee67f218abbd5f42c82bbb696869dbc5a504465702c1c5d8b637930cebc80021ec25e048f59ee80aab5cb515a60d10ef01329b4cd543ed195b7e4af0d8f75e826b878f76392ce9afe4f935957536451f3dc4637235d831a669d986672ffd4c636d8d1cefedd72a3fdd20b084063e12a980a9068ff67b71"; */
-  uint32_t e = 0x10001;
-  
-  unsigned char *n = heap_get(256);
-  unhexlify(n_hex, 512, n);
   // encryption
   unsigned char *oaep_encoding = pkcs_oaep_encode(input, sizeof input - 1);
   unsigned char *cipher = rsa_encrypt(oaep_encoding, 256, n, RSA_KEYSIZE, e);

@@ -25,7 +25,6 @@ static void pow_mod(struct bn* a, uint32_t b, struct bn* n, struct bn* res)
 #ifdef USE_IO
 	  printf("Iteration %d\n", ++it);
 #endif
-    // printf("Heap brk Before Iteration: %p\n", heap.brk);
     if (b & 1) {
       bignum_mul(res, a, tmp);
       bignum_mod(tmp, n, res);
@@ -34,8 +33,6 @@ static void pow_mod(struct bn* a, uint32_t b, struct bn* n, struct bn* res)
     bignum_mod(tmp, n, a);
 
     b >>= 1;
-    
-    // printf("Heap brk After Iteration: %p\n", heap.brk);
   }
 
   heap_free(mem + sizeof *tmp);
@@ -63,7 +60,6 @@ unsigned char* rsa_encrypt(const unsigned char* from, uint32_t flen,
   	*(((DTYPE*)cipher)+c->len-i-1) = c->array[i];
 #endif
 
-  heap_free(mem);
   return cipher;
 }
 

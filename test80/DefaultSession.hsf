@@ -54,20 +54,9 @@
 [WINDOW_POSITION_STATE_DATA_VD3]
 [WINDOW_POSITION_STATE_DATA_VD4]
 [WINDOW_Z_ORDER]
-"C:\WorkSpace\test80\test80\src\pkcs_oaep.c" 
-"C:\WorkSpace\test80\test80\src\rsa.h" 
 "C:\WorkSpace\test80\test80\src\rsa.c" 
-"C:\WorkSpace\test80\test80\src\bn.c" 
 "C:\WorkSpace\test80\test80\resetprg.c" 
-"C:\WorkSpace\test80\test80\src\sha1.c" 
-"C:\WorkSpace\test80\test80\src\util.h" 
-"C:\WorkSpace\test80\test80\src\bn.h" 
-"C:\WorkSpace\test80\test80\src\util.c" 
-"C:\WorkSpace\test80\test80\hwsetup.c" 
-"C:\WorkSpace\test80\test80\intprg.c" 
-"C:\WorkSpace\test80\test80\lowsrc.c" 
-"C:\WorkSpace\test80\test80\test80.c" 
-"C:\WorkSpace\test80\test80\iodefine.h" 
+"C:\WorkSpace\test80\test80\src\pkcs_oaep.c" 
 [TARGET_NAME]
 "" "" 909343799 
 [STATUSBAR_STATEINFO_VD1]

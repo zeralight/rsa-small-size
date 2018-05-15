@@ -57,6 +57,8 @@ void print_hex(const unsigned char* bytes, uint32_t len)
 
 #endif
 
+
+#if defined(IMPLEMENT_ALL)
 void unhexlify(const unsigned char* from, uint32_t len, unsigned char* to)
 {
   require (!(len & 1), "invalid length: not even");
@@ -70,3 +72,4 @@ void unhexlify(const unsigned char* from, uint32_t len, unsigned char* to)
     to[i] = (a << 4) + b;
   }
 }
+#endif
