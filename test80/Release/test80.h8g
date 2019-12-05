@@ -1,4 +1,0 @@
--cpu=2000N
--output="C:\WorkSpace\test80\test80\Release\test80.lib"
--head=runtime
--lang=c99

@@ -1,8 +1,0 @@
-"C:\WorkSpace\test80\test80\lowlvl.src"
--cpu=2000A:24
--debug
--object="C:\WorkSpace\test80\test80\SimDebug_H8S-2000A\lowlvl.obj"
--nolist
--nologo
--chgincpath
--errorpath

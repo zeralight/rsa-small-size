@@ -1,5 +1,0 @@
--cpu=2000N
--output="C:\WorkSpace\test80\test80\SimDebug_H8S-2000N\test80.lib"
--optimize=0
--head=runtime
--lang=c99

@@ -1,8 +1,0 @@
-"C:\WorkSpace\test80\test80\lowlvl.src"
--cpu=2000N
--nodebug
--object="C:\WorkSpace\test80\test80\Release\lowlvl.obj"
--nolist
--nologo
--chgincpath
--errorpath

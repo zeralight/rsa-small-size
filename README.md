@@ -1,19 +1,14 @@
-    
-    /*
-        TODO:
-            - test length implementation
-            - karatsuba shift_10 ?
-    */
-    RSA Encryption Tool for H8S/2329 Family Embedded System
-    Assumptions:
-        According to the manual reference of the following document https://www.renesas.com/en-eu/document/hw-manual?hwLayerShowFlg=true&prdLayerId=113&layerName=H8S%252F2329&coronrService=document-prd-search&hwDocUrl=%2Fen-eu%2Fdoc%2Fproducts%2Fmpumcu%2F001%2Frej09b0220_h8s2329.pdf&hashKey=48c4c71aed4ab2d891bcfcd5ee20780a
-        - Supported 16 bit / 32 bit registers and memory allocations, but not 64.
-        - Big Endiand used (though it doesn't matter).
-        - C99 Supported by the compiler.
+# RSAES-OAEP (RFC 3447) Encryption Tool for H8S/2329 Family Embedded System
+Less than 16Kb of code size.
+## Assumptions:
+According to the manual reference of the following document https://www.renesas.com/en-eu/document/hw-manual?hwLayerShowFlg=true&prdLayerId=113&layerName=H8S%252F2329&coronrService=document-prd-search&hwDocUrl=%2Fen-eu%2Fdoc%2Fproducts%2Fmpumcu%2F001%2Frej09b0220_h8s2329.pdf&hashKey=48c4c71aed4ab2d891bcfcd5ee20780a
+- Supported 16 bit / 32 bit registers and memory allocations, but not 64.
+- Big Endiand used (though it doesn't matter).
+- C99 Supported by the compiler.
     * NOTE: the program doesn't support importing keys from PEM and DER format.
     * ATTENTION: this encryption is implemented according to RFC 3447 Section 7.1 (https://tools.ietf.org/html/rfc3447#section-7.1) (aka RSAES-OAEP without Signature)
-    *           However, It works correctly only with valid input (errors handling not managed yet).
-    *           So Make sure to always check your (key / input).
+    * However, It works correctly only with valid input (errors handling not managed yet).
+    * So Make sure to always check your (key / input).
 
     /**
      * RSA arguments: N and e
@@ -44,38 +39,10 @@
     -----END RSA PRIVATE KEY-----
 
     */
-
-    HOWTO:
-    In file pkcs_oaep.c:
-        the encryption entry point is the function:
-
-        /**
-        * Main function of the encryption
-        * PARAMS:
-        * message: bytes of the message to encrypt in Big Endian (Network Number Representation).
-        * mLen: length of the message in bytes
-        * n: bytes representation of the Modulus N in Big Endian.
-        * nlen: length of n (THIS should be 256 in RSA2048 encryption)
-        * e: public exponent (uint32_t should be enough)
-        * 
-        * RETURN:
-        * PKCS1_OAEP encryption of the message in Big Endian.
-        */
-        unsigned char* pkcs_oaep(const unsigned char* message,
-                            uint32_t mLen,
-                            const unsigned char* n,
-                            uint32_t nlen,
-                            uint32_t e)
-        
-        the returned result is allocated on heap, you need to free() it.
-  
-        cf. http://textuploader.com/dfobj to understand how to use the program later.
   
   
   
-  
-  
-  FIXME:
+  *FIXME:*
   - remove usuless code
   - improve error handling
   - PEM/DER support 

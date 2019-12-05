@@ -1,9 +1,0 @@
--cpu=2000N
--define=NDEBUG,__H8_2329F__
--lang=c99
--object="C:\WorkSpace\test80\test80\Release\dbsct.obj"
--outcode=sjis
--nolist
--chgincpath
-"C:\WorkSpace\test80\test80\dbsct.c"
--nologo

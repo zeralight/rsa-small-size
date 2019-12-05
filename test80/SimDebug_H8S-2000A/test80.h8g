@@ -1,4 +1,0 @@
--cpu=2000A:24
--output="C:\WorkSpace\test80\test80\SimDebug_H8S-2000A\test80.lib"
--head=runtime,stdio,stdlib
--lang=c99
